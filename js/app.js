@@ -1,6 +1,6 @@
 /* ============================================================
    ADMIN-FLANDES · APP
-   Ecosistema Flandes · Fase 10 · entrega 10.1
+   Ecosistema Flandes · Fase 10 · entregas 10.1 y 10.2
 
    La app del desarrollador. La misma cara de las otras apps: franja
    con cielo, tu foto, los accesos por bloques y abajo el resumen de
@@ -15,6 +15,16 @@
        y, por REVISOR, a quién revisa y si decide.
      · BITÁCORA (bitacora.js): todo cambio hecho desde aquí, con PDF y Excel.
      · SOPORTE (tarjeta y menú del perfil).
+
+   Vistas de la 10.2 (contratistas):
+     · CONTRATISTAS, ficha, AGREGAR, ADICIÓN, CESIÓN, SUSPENSIÓN y EDITAR:
+       las MISMAS de CONTRATACION (contratistas.js y gestion.js son archivos
+       compartidos); el CORE las atiende con rutas de ADMIN que van a las
+       mismas funciones y suman la bitácora.
+     · CARGA MASIVA (masiva.js, compartido con CONTRATACION).
+     · Lo propio de ADMIN (contratos-admin.js): canal de notificación,
+       cuentas con cambio de estado en silencio, historial, NOVEDADES y
+       TODOS LOS DATOS de la fila.
 
    UN SOLO LLAMADO por pantalla o acción:
      · Entrar: el login trae el arranque ('inicio') en el mismo viaje y ahí
@@ -69,6 +79,12 @@
     if (d.personas && K.piezas.personas) K.piezas.personas.cargar(d.personas);
     if (d.push && K.piezas.avisos && K.piezas.avisos.configurar) K.piezas.avisos.configurar(d.push);
     if (d.config && K.piezas.creditos && K.piezas.creditos.configurar) K.piezas.creditos.configurar(d.config);
+  }
+
+  /* 10.2 · lo que comparten las vistas de contratistas (las de CONTRATACION) */
+  function contextoContratos() {
+    return { app: app, puede: puede, irA: irA, errorCaja: errorCaja, enrutar: enrutar,
+             bitacora: function (f) { if (C) C.bitacora(f); } };
   }
 
   /* el login trae el arranque (pre.arranque) en el mismo viaje */
@@ -181,6 +197,7 @@
       });
     }
     MODULOS.forEach(function (m) { if (window[m]) window[m].configurar(C); });
+    ['CONTRATISTAS', 'GESTION', 'MASIVA', 'CONTRATOS_ADMIN'].forEach(function (m) { if (window[m]) window[m].configurar(contextoContratos()); });
 
     K.cuando('kit:foto', function (r) {
       YO.imagen = r.url || '';
@@ -263,6 +280,7 @@
     if (K.piezas.avisos) K.piezas.avisos.olvidar();
     if (K.piezas.insights) K.piezas.insights.quitar();
     MODULOS.forEach(function (m) { if (window[m] && window[m].olvidar) window[m].olvidar(); });
+    if (window.CONTRATISTAS && window.CONTRATISTAS.olvidar) window.CONTRATISTAS.olvidar();
     ARRANQUE = null;
     K.piezas.sesion.salir();
     location.hash = '';
@@ -274,17 +292,42 @@
     inicio: vistaInicio,
     configuracion: function (sub) { window.CONFIG.vista(sub); },
     usuarios: function (sub) { window.USUARIOS.vista(sub); },
-    bitacora: function () { window.BITACORA.vista(); }
+    bitacora: function () { window.BITACORA.vista(); },
+    /* 10.2 · contratistas (las vistas de CONTRATACION) */
+    contratistas: function (sub) { window.CONTRATISTAS.lista(sub); },
+    contratista: function (sub) { window.CONTRATISTAS.detalle(sub); },
+    agregar: function () { window.GESTION.agregar(); },
+    adicion: function (sub) { window.GESTION.adicion(sub); },
+    cesion: function (sub) { window.GESTION.cesion(sub); },
+    suspension: function (sub) { window.GESTION.suspension(sub); },
+    editar: function (sub) { window.GESTION.editar(sub); },
+    masiva: function () { window.MASIVA.vista(); },
+    /* 10.2 · lo propio de ADMIN */
+    novedad: function (sub) { window.CONTRATOS_ADMIN.novedad(sub); },
+    datos: function (sub) { window.CONTRATOS_ADMIN.datos(sub); }
   };
 
   var titulos = {
     inicio: 'Admin Flandes',
     configuracion: 'CONFIGURACIÓN',
     usuarios: 'USUARIOS Y ROLES',
-    bitacora: 'BITÁCORA'
+    bitacora: 'BITÁCORA',
+    contratistas: 'CONTRATISTAS',
+    contratista: 'DETALLES DEL CONTRATISTA',
+    agregar: 'AGREGAR CONTRATISTA',
+    adicion: 'ADICIÓN',
+    cesion: 'CESIÓN',
+    suspension: 'SUSPENSIÓN',
+    editar: 'EDITAR CONTRATO',
+    masiva: 'CARGA MASIVA',
+    novedad: 'NOVEDADES',
+    datos: 'TODOS LOS DATOS'
   };
 
-  var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora' };
+  var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora',
+    contratistas: 'contratistas', contratista: 'contratistas', agregar: 'agregarContratista', masiva: 'agregarContratista',
+    adicion: 'adicion', cesion: 'cesion', suspension: 'suspension', editar: 'editarContratista',
+    novedad: 'contratistas', datos: 'contratistas' };
 
   function irA(v) { location.hash = '#/' + v; }
 
@@ -300,8 +343,16 @@
     if (v !== 'inicio' && !puede(PERMISO[v] || v)) v = 'inicio';
 
     K.piezas.banner.vista(titulos[v]);
-    var resto = decodeURIComponent(partes.slice(1).join('/'));
-    K.piezas.banner.atras(v === 'inicio' ? null : function () { irA('inicio'); });
+    var resto = partes.slice(1).join('/');
+    /* la ficha vuelve a la lista; lo que sale de una ficha vuelve a esa ficha */
+    var FICHA_DE = { adicion: 1, cesion: 1, suspension: 1, editar: 1, novedad: 1, datos: 1 };
+    K.piezas.banner.atras(v === 'inicio' ? null : function () {
+      if (FICHA_DE[v]) irA('contratista/' + partes[1]);
+      else if (v === 'contratista' || v === 'agregar' || v === 'masiva') irA('contratistas');
+      else irA('inicio');
+    });
+    /* las vistas de 10.1 reciben el resto ya decodificado, como antes */
+    if (!window.CONTRATISTAS || !{ contratistas: 1, contratista: 1, agregar: 1, adicion: 1, cesion: 1, suspension: 1, editar: 1, masiva: 1, novedad: 1, datos: 1 }[v]) resto = decodeURIComponent(resto);
 
     app.innerHTML = '';
     if (window.AYUDA) window.AYUDA.montar(v);
@@ -346,6 +397,18 @@
     if (puede('bitacora')) tE.push(acc.bitacora = acceso('BITÁCORA', 'Cada cambio hecho desde aquí: quién, cuándo, antes, después y motivo', 'img/pdf.webp',
       function () { irA('bitacora'); }));
     if (tE.length) bloque('ECOSISTEMA', tE);
+
+    /* 10.2 · contratistas: las mismas vistas de CONTRATACION + lo de ADMIN */
+    var tC = [];
+    if (puede('contratistas')) tC.push(acceso('CONTRATISTAS', 'Cualquier contrato: todos sus datos, novedades, cesión, cuentas en silencio y canal de avisos', 'img/contratista.webp',
+      function () { irA('contratistas'); }));
+    if (puede('agregarContratista')) {
+      tC.push(acceso('AGREGAR CONTRATISTA', 'Registra un contrato: primero se valida el documento, después lo demás', 'img/datos_de_procesos.webp',
+        function () { irA('agregar'); }));
+      tC.push(accesoIcono('CARGA MASIVA', 'Varios contratos de una vez con la plantilla de Excel: se revisan antes de registrar', 'hoja',
+        function () { irA('masiva'); }));
+    }
+    if (tC.length) bloque('CONTRATISTAS', tC);
 
     var tA = [];
     if (puede('configuracion')) {

@@ -46,6 +46,13 @@ var ARMAZON = [
   './js/configuracion.js',
   './js/usuarios.js',
   './js/bitacora.js',
+  /* 10.2 · contratistas */
+  './js/contratistas.js',
+  './js/gestion.js',
+  './js/masiva.js',
+  './js/contratos-admin.js',
+  './js/ayuda-contratos.js',
+  './plantillas/PLANTILLA_CARGA_MASIVA_CONTRATISTAS.xlsx',
   './img/icono-32.png',
   './img/icono-180.png',
   './img/icono-192.png',

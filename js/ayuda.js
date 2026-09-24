@@ -1,6 +1,6 @@
 /* ============================================================
    ADMIN-FLANDES · AYUDA POR VISTA (Insights)
-   Ecosistema Flandes · Fase 10
+   Ecosistema Flandes · Fase 10 (10.2: contratistas, novedades y todos los datos)
 
    El mismo patrón de las otras apps: cada vista tiene una GUÍA que habla
    de lo que hay en pantalla y PREGUNTAS RÁPIDAS con la respuesta
@@ -52,7 +52,7 @@
       t += 'Hay **' + act + '** usuarios activos en las apps de funcionarios. ';
       var m = a.mantenimiento || {};
       if (m.activo) t += '**Ojo: el modo mantenimiento está ENCENDIDO** (' + ((m.apps || []).length ? m.apps.join(', ') : 'todas las apps') + '). ';
-      t += 'Abajo, lo que pide atención: toca una línea y abre la vista ya filtrada.';
+      t += 'En **CONTRATISTAS** gestionas cualquier contrato (datos, novedades, cesión, cuentas en silencio y canal). Abajo, lo que pide atención: toca una línea y abre la vista ya filtrada.';
       return {
         guia: t,
         botones: [P_BLOQUEADOS, P_SIN_CEL,
@@ -141,19 +141,62 @@
     }
   };
 
-  var TITULOS = { inicio: 'Tu inicio', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora' };
+  /* ══════════════ 10.2 · contratistas ══════════════ */
+  function CA() { return window.CONTRATOS_ADMIN ? (window.CONTRATOS_ADMIN._ultima() || {}) : {}; }
+
+  GUIAS.novedad = function () {
+    return {
+      guia: 'Las novedades del contrato. **Otrosí**, **prórroga**, **terminación anticipada** y **liquidación** son solo información (no generan documento) y quedan en la hoja NOVEDADES_CONTRATOS. ' +
+            '**Suspensión y reinicio** corre la terminación; **cambio de supervisor** pasa sus cuentas abiertas al nuevo. **Adición** y **cesión** abren su propia vista.',
+      botones: [
+        { texto: '¿Qué novedades tiene este contrato?', responde: function () {
+            var d = CA().d, n = d && d.admin ? d.admin.novedades : [];
+            if (!d) return 'El contrato todavía está cargando.';
+            if (!n.length) return 'Ninguna registrada desde ADMIN.';
+            return listaCorta(n, function (x) { return '· **' + x.novedad + '** ' + (x.fechaNovedad ? 'del ' + x.fechaNovedad : '') + ' — ' + nombre(x.quien); }, 8);
+          } },
+        { texto: '¿La prórroga cambia el valor?', responde: function () {
+            return 'No. La prórroga es **solo tiempo**: corre la fecha de terminación y recalcula el tiempo de ejecución (descontando lo suspendido). Si también hay plata, es una **adición**.';
+          } }
+      ]
+    };
+  };
+
+  GUIAS.datos = function () {
+    return {
+      guia: 'Cada columna de la fila del contrato. Cambia lo que haga falta: las celdas que tocas se marcan y solo esas se escriben. ' +
+            'Lo que tiene reglas propias (secretaría, supervisor, valor, CDP, objeto y obligaciones) se edita en **Editar contrato**. La contraseña y el ID no se editan.',
+      botones: [
+        { texto: '¿Qué pasa si cambio el documento o el contrato?', responde: function () {
+            return 'Cambia la llave (**ID CONTRATO** = documento + contrato). La app comprueba que no exista otra igual y **sus cuentas la acompañan**: se les cambia el ID, el documento y el número.';
+          } },
+        { texto: '¿Y si alguien lo cambió mientras editaba?', responde: function () {
+            return 'La app compara la huella de la fila: si otra persona guardó primero, **no se pisa** y te pide volver a abrirla.';
+          } }
+      ]
+    };
+  };
+
+  /* las guías de la lista, la ficha, agregar, adición, cesión, suspensión, editar y la
+     carga masiva son las de CONTRATACION: js/ayuda-contratos.js (archivo compartido) */
+  var TITULOS = { inicio: 'Tu inicio', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora',
+                  novedad: 'Novedades del contrato', datos: 'Todos los datos del contrato' };
+  if (window.AYUDA_CONTRATOS) window.AYUDA_CONTRATOS.sumar(GUIAS, TITULOS);
 
   function montar(vista, extra) {
     if (!K.piezas.insights) return;
     var g = GUIAS[vista];
     if (!g) return;
     var base = g();
-    K.piezas.insights.montar({
+    var cfg = {
       vista: (extra && extra.vista) || TITULOS[vista] || vista,
       guia: function () { return g().guia; },
       botones: base.botones || [],
       alto: !!base.alto
-    });
+    };
+    /* la lista de contratistas trae cifras sobre lo que hay en pantalla */
+    if (base.filas) { cfg.filas = base.filas; cfg.medidas = base.medidas; cfg.filtros = base.filtros; }
+    K.piezas.insights.montar(cfg);
   }
 
   window.AYUDA = {
