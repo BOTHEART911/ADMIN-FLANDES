@@ -51,6 +51,10 @@
   function lista() { return D().usuarios || []; }
   function apps() { return D().apps || ['CONTRATACION', 'SUPERVISION', 'CONTABILIDAD', 'TESORERIA', 'COMUNICACIONES', 'ADMIN']; }
   function rolesDe(app) { var r = (D().roles || {})[app] || []; return r.slice(); }
+  /* 25/09: en las apps de rolesMultiples (Contratación) una persona puede tener varios roles: "REVISOR,CREADOR" */
+  function multiple(app) { return (D().rolesMultiples || ['CONTRATACION']).indexOf(app) >= 0; }
+  function rolesDeU(rol) { return String(rol || '').split(/[,+\/]/).map(function (x) { return K.norm(x); }).filter(Boolean); }
+  function tiene(rol, uno) { return rolesDeU(rol).indexOf(uno) >= 0; }
 
   function filtradas() {
     var q = K.norm(F.buscar);
@@ -141,7 +145,7 @@
     var est = t.querySelector('.ad-u__est');
     est.className = 'ct-marca ad-u__est ad-est--' + u.estado.toLowerCase();
     est.textContent = u.estado;
-    t.querySelector('.ad-u__rol').innerHTML = '<span class="ct-marca ad-app-m">' + K.esc(APP_T[u.app] || u.app) + '</span> <b>' + K.esc(u.rol) + '</b> <span class="ad-u__rt">' + K.esc(ROL_T[u.rol] || '') + '</span>';
+    t.querySelector('.ad-u__rol').innerHTML = '<span class="ct-marca ad-app-m">' + K.esc(APP_T[u.app] || u.app) + '</span> <b>' + K.esc(rolesDeU(u.rol).join(' · ')) + '</b> <span class="ad-u__rt">' + K.esc(rolesDeU(u.rol).map(function (r) { return ROL_T[r] || ''; }).filter(Boolean).join(' y ')) + '</span>';
     var ul = t.querySelector('ul');
     function li(ic, txt, clase) { var e = K.nodo('<li' + (clase ? ' class="' + clase + '"' : '') + '>' + K.icono(ic, 13) + '<span></span></li>'); e.querySelector('span').textContent = txt; ul.appendChild(e); }
     li('telefono', u.telefono || 'Sin celular: no recibe ni recupera la contraseña', u.telefono ? '' : 'ad-malo');
@@ -150,7 +154,7 @@
     else if (u.claveEsDocumento) li('llave', 'Contraseña = su documento (no la ha cambiado)', 'ad-aviso');
     if (u.bloqueado) li('candado', 'BLOQUEADO: ' + u.intentos + ' intentos fallidos', 'ad-malo');
     else if (u.intentos) li('aviso', u.intentos + (u.intentos === 1 ? ' intento fallido' : ' intentos fallidos'), 'ad-aviso');
-    if (u.rol === 'REVISOR' && (u.app === 'SUPERVISION' || u.app === 'CONTRATACION')) {
+    if (tiene(u.rol, 'REVISOR') && (u.app === 'SUPERVISION' || u.app === 'CONTRATACION')) {
       if (u.app === 'SUPERVISION') li('persona', u.alcance ? (u.alcance.supervisor ? 'Revisa lo de ' + O().nombre(u.alcance.supervisor) : 'Revisa ' + O().titulo(u.alcance.secretaria)) : 'Sin supervisor ni secretaría asignada: no ve nada', u.alcance ? '' : 'ad-malo');
       li(u.decide ? 'check' : 'prohibido', u.decide ? 'Puede aprobar y devolver' : 'Solo visto bueno o inconsistencia (no aprueba ni devuelve)', '');
     }
@@ -199,10 +203,17 @@
     apps().forEach(function (a) { var o = document.createElement('option'); o.value = a; o.textContent = APP_T[a] || a; if (a === u.app) o.selected = true; sA.appendChild(o); });
     sA.disabled = !nuevo;
     var sR = campo('Rol *', '<select class="op-select"></select>');
+    var zChk = K.nodo('<div class="ad-roles"></div>');
+    sR.parentNode.appendChild(zChk);
+    /* el rol elegido: en una app de varios roles son las casillas marcadas, unidas por coma */
+    function rolElegido() {
+      if (!multiple(sA.value)) return sR.value;
+      return [].slice.call(zChk.querySelectorAll('input:checked')).map(function (i) { return i.value; }).join(',');
+    }
     var iD = campo('Documento *', '<input type="text" inputmode="numeric" maxlength="12">', nuevo ? 'Con el documento entra a la app.' : 'El documento y la app no se cambian: si están mal, desactiva este usuario y crea otro.');
     iD.value = u.documento; iD.disabled = !nuevo;
     var iN = campo('Nombre completo *', '<input type="text" maxlength="120">'); iN.value = u.nombre;
-    var iT = campo('Celular', '<input type="tel" inputmode="numeric" maxlength="10" placeholder="3XXXXXXXXX">', 'Ahí le llegan la bienvenida y la recuperación de la contraseña.'); iT.value = u.telefono;
+    var iT = campo('Celular', '<input type="tel" inputmode="numeric" maxlength="10" placeholder="3XXXXXXXXX">', 'Ahí le llegan la bienvenida y la recuperación de la contraseña.'); iT.value = String(u.telefono || '').replace(/^57(?=3\d{9}$)/, '');   /* 25/09: las filas migradas traen el 57 delante y el formulario pide 10 dígitos */
     var iC = campo('Correo', '<input type="email" maxlength="120">', 'Para los avisos por correo.'); iC.value = u.correo;
     var iK = null, chB = null;
     if (nuevo) {
@@ -217,6 +228,19 @@
     var rev = { alcanceTipo: u.alcance ? (u.alcance.supervisor ? 'supervisor' : 'secretaria') : '', alcance: u.alcance ? (u.alcance.supervisor || u.alcance.secretaria) : '', decide: u.decide === true };
 
     function roles() {
+      zChk.innerHTML = '';
+      var varios = multiple(sA.value);
+      sR.hidden = varios;
+      if (varios) {
+        rolesDe(sA.value).forEach(function (r) {
+          var lb = K.nodo('<label class="op-check cf-sw"><input type="checkbox"><span></span></label>');
+          var i = lb.querySelector('input'); i.value = r; i.checked = tiene(u.rol, r);
+          lb.querySelector('span').textContent = r + (ROL_T[r] ? ' · ' + ROL_T[r] : '');
+          i.addEventListener('change', revisor);
+          zChk.appendChild(lb);
+        });
+        zChk.appendChild(K.nodo('<p class="campo__ayuda">Puede tener los dos roles. Revisar cuentas es solo del REVISOR: un CREADOR sin ese rol no revisa.</p>'));
+      }
       sR.innerHTML = '';
       rolesDe(sA.value).forEach(function (r) { var o = document.createElement('option'); o.value = r; o.textContent = r + (ROL_T[r] ? ' · ' + ROL_T[r] : ''); if (r === u.rol) o.selected = true; sR.appendChild(o); });
       if (C.esDev && C.esDev() && sA.value === 'ADMIN' && rolesDe('ADMIN').indexOf('DEV') < 0) { var o = document.createElement('option'); o.value = 'DEV'; o.textContent = 'DEV'; sR.appendChild(o); }
@@ -224,7 +248,7 @@
     }
     function revisor() {
       zRev.innerHTML = '';
-      if (sR.value !== 'REVISOR' || (sA.value !== 'SUPERVISION' && sA.value !== 'CONTRATACION')) return;
+      if (!tiene(rolElegido(), 'REVISOR') || (sA.value !== 'SUPERVISION' && sA.value !== 'CONTRATACION')) return;
       var g = K.nodo('<div class="kit-tarjeta ad-rev__caja"><p class="grupo__t">' + K.icono('persona', 14) + ' Usuario REVISOR</p></div>');
       if (sA.value === 'SUPERVISION') {
         var sup = (D().supervisores || { lista: [] }).lista.map(function (x) { return x.nombre; });
@@ -262,13 +286,13 @@
       botones: [{ texto: 'Cancelar', al: function () { m.cerrar(); } }, { texto: nuevo ? 'Crear' : 'Guardar', icono: 'check', marca: true, al: guardar }] });
 
     function guardar() {
-      var d = { nuevo: nuevo, appDestino: sA.value, rol: sR.value, documento: iD.value.trim(), nombre: iN.value.trim(), telefono: iT.value.trim(), correo: iC.value.trim(), motivo: iMo.value.trim() };
+      var d = { nuevo: nuevo, appDestino: sA.value, rol: rolElegido(), documento: iD.value.trim(), nombre: iN.value.trim(), telefono: iT.value.trim(), correo: iC.value.trim(), motivo: iMo.value.trim() };
       if (!d.documento || !d.nombre || !d.rol) { K.aviso('Faltan el documento, el nombre o el rol.', 'aviso', 4000); return; }
       if (d.documento.length < 5) { K.aviso('El documento es muy corto.', 'aviso', 3500); return; }
       if (d.telefono && !/^3\d{9}$/.test(d.telefono)) { K.aviso('El celular debe tener 10 dígitos y empezar por 3.', 'aviso', 4000); return; }
       if (d.correo && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(d.correo)) { K.aviso('El correo no es válido.', 'aviso', 3500); return; }
       if (nuevo) { d.clave = iK.value.trim(); d.bienvenida = chB.checked; }
-      if (d.rol === 'REVISOR' && (d.appDestino === 'SUPERVISION' || d.appDestino === 'CONTRATACION')) {
+      if (tiene(d.rol, 'REVISOR') && (d.appDestino === 'SUPERVISION' || d.appDestino === 'CONTRATACION')) {
         d.decide = rev.decide;
         if (d.appDestino === 'SUPERVISION') d.alcance = rev.alcanceTipo && rev.alcance ? (rev.alcanceTipo === 'supervisor' ? { supervisor: rev.alcance } : { secretaria: rev.alcance }) : null;
       }

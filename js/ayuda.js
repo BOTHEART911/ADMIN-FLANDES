@@ -109,12 +109,12 @@
     usuarios: function () {
       return {
         guia: 'Cada tarjeta es un usuario en UNA app (la misma persona puede estar en varias). Filtra por app y estado. Al crear uno, la contraseña es su **documento** salvo que escribas otra, y puedes mandarle la **bienvenida** en el mismo paso. ' +
-              'Los **REVISOR** de Supervisión necesitan saber a quién revisan; y en Supervisión y Contratación decides si **aprueban y devuelven**.',
+              'Los **REVISOR** de Supervisión necesitan saber a quién revisan; y en Supervisión y Contratación decides si **aprueban y devuelven**. En Contratación una persona puede ser **REVISOR y CREADOR** a la vez (revisar cuentas sigue siendo solo del REVISOR).',
         botones: [P_BLOQUEADOS, P_SIN_CEL,
           { texto: '¿Qué estoy viendo?', responde: function () {
               var l = window.USUARIOS ? window.USUARIOS._filtradas() : [];
               var c = {};
-              l.forEach(function (u) { c[u.rol] = (c[u.rol] || 0) + 1; });
+              l.forEach(function (u) { String(u.rol || '').split(',').forEach(function (r) { r = r.trim(); if (r) c[r] = (c[r] || 0) + 1; }); });
               return 'Estás viendo **' + l.length + '** usuarios' + (l.length ? ': ' + Object.keys(c).map(function (k) { return c[k] + ' ' + k; }).join(', ') : '') + '.';
             } },
           { texto: '¿Quién sigue con la contraseña del documento?', responde: function () {

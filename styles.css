@@ -3364,3 +3364,8 @@ button.so-per:hover { border-color: var(--k-marca); background: rgba(var(--k-mar
 .tu-t__acc { flex-wrap: nowrap; }
 .tu-t__acc .kit-btn { padding-left: 12px; padding-right: 12px; }
 .tu-t__borrar { margin-left: auto; }
+
+/* 25/09 · varios roles en una app (Contratación: REVISOR y CREADOR) */
+.ad-roles { display: flex; flex-direction: column; gap: 8px; }
+.ad-roles:empty { display: none; }
+.ad-roles .campo__ayuda { margin: 2px 0 0; }
