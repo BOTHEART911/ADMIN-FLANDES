@@ -16,6 +16,12 @@
      · BITÁCORA (bitacora.js): todo cambio hecho desde aquí, con PDF y Excel.
      · SOPORTE (tarjeta y menú del perfil).
 
+   Vista de la 10.4:
+     · SOPORTES (soportes.js): todas las solicitudes de las siete apps;
+       responder, cargar a nombre de alguien, estrellas y reabiertos, PDF
+       por bloques y Excel. Rehacer los documentos de una cuenta va en la
+       ficha del contratista (contratos-admin.js) y queda aquí como soporte.
+
    Vista de la 10.3:
      · RECORDATORIOS (recordatorios.js): los dos scripts viejos
        (RECORDATORIO_CUENTAS y NOTIFICACION_FINAL) ya dentro del CORE,
@@ -55,7 +61,7 @@
   var ARRANQUE = null;    /* lo que trajo 'inicio' */
   var VERSIONES = {};     /* APP -> versión publicada (de su version.js) */
 
-  var MODULOS = ['CONFIG', 'USUARIOS', 'BITACORA', 'RECORDATORIOS'];
+  var MODULOS = ['CONFIG', 'USUARIOS', 'BITACORA', 'RECORDATORIOS', 'SOPORTES'];
 
   /* Las siete apps con la imagen que las representa en ALCALDIA-MEDIOS */
   var APPS = [
@@ -174,6 +180,8 @@
       usuarios: function (lista) { if (ARRANQUE && lista) ARRANQUE.usuarios = lista; },
       supervisores: function (s) { if (ARRANQUE && s) ARRANQUE.supervisores = s; },
       festivos: function (f) { if (ARRANQUE && f) ARRANQUE.festivos = f; },
+      /* 10.4 · las cifras de soporte del inicio */
+      soporte: function (r) { if (ARRANQUE && r) ARRANQUE.soporte = r; },
       aviso: function (tipo, plantilla, canales) {
         if (!ARRANQUE || !ARRANQUE.avisos) return;
         ARRANQUE.avisos.plantillas[tipo] = plantilla; ARRANQUE.avisos.canales[tipo] = canales;
@@ -203,6 +211,11 @@
     }
     MODULOS.forEach(function (m) { if (window[m]) window[m].configurar(C); });
     ['CONTRATISTAS', 'GESTION', 'MASIVA', 'CONTRATOS_ADMIN'].forEach(function (m) { if (window[m]) window[m].configurar(contextoContratos()); });
+    /* 10.4 · la ficha del contratista avisa a SOPORTES y al inicio cuando rehace documentos */
+    if (window.CONTRATOS_ADMIN && window.CONTRATOS_ADMIN.alSoporte) window.CONTRATOS_ADMIN.alSoporte(function (r) {
+      if (r && r.resumen) C.soporte(r.resumen);
+      if (r && r.soporte && window.SOPORTES) window.SOPORTES.recibir(r.soporte);
+    });
 
     K.cuando('kit:foto', function (r) {
       YO.imagen = r.url || '';
@@ -300,6 +313,8 @@
     bitacora: function () { window.BITACORA.vista(); },
     /* 10.3 · recordatorios y notificación final (antes scripts sueltos) */
     recordatorios: function () { window.RECORDATORIOS.vista(); },
+    /* 10.4 · soporte profesional */
+    soportes: function (sub) { window.SOPORTES.vista(sub); },
     /* 10.2 · contratistas (las vistas de CONTRATACION) */
     contratistas: function (sub) { window.CONTRATISTAS.lista(sub); },
     contratista: function (sub) { window.CONTRATISTAS.detalle(sub); },
@@ -320,6 +335,7 @@
     usuarios: 'USUARIOS Y ROLES',
     bitacora: 'BITÁCORA',
     recordatorios: 'RECORDATORIOS',
+    soportes: 'SOPORTES',
     contratistas: 'CONTRATISTAS',
     contratista: 'DETALLES DEL CONTRATISTA',
     agregar: 'AGREGAR CONTRATISTA',
@@ -332,7 +348,7 @@
     datos: 'TODOS LOS DATOS'
   };
 
-  var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora', recordatorios: 'configuracion',
+  var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora', recordatorios: 'configuracion', soportes: 'soportes',
     contratistas: 'contratistas', contratista: 'contratistas', agregar: 'agregarContratista', masiva: 'agregarContratista',
     adicion: 'adicion', cesion: 'cesion', suspension: 'suspension', editar: 'editarContratista',
     novedad: 'contratistas', datos: 'contratistas' };
@@ -404,6 +420,8 @@
       function () { irA('usuarios'); }));
     if (puede('configuracion')) tE.push(acc.recordatorios = accesoIcono('RECORDATORIOS', 'Recordatorios de cuentas a supervisores y Contratación, y la notificación final del contrato', 'reloj',
       function () { irA('recordatorios'); }));
+    if (puede('soportes')) tE.push(acc.soportes = acceso('SOPORTES', 'Las solicitudes de las siete apps: responder, cargar a nombre de alguien, estrellas y reabiertos', 'img/chat.webp',
+      function () { irA('soportes'); }));
     if (puede('bitacora')) tE.push(acc.bitacora = acceso('BITÁCORA', 'Cada cambio hecho desde aquí: quién, cuándo, antes, después y motivo', 'img/pdf.webp',
       function () { irA('bitacora'); }));
     if (tE.length) bloque('ECOSISTEMA', tE);
@@ -465,7 +483,11 @@
       festivosAlDia: !!(d.festivos && d.festivos.alDia),
       supSinGrupo: sup.lista.filter(function (s) { return !s.grupo; }).length,
       huerfanos: (sup.huerfanos || []).length,
-      mantenimiento: mant.activo === true ? ((mant.apps || []).length ? mant.apps.join(', ') : 'TODAS') : ''
+      mantenimiento: mant.activo === true ? ((mant.apps || []).length ? mant.apps.join(', ') : 'TODAS') : '',
+      /* 10.4 · soporte */
+      sopAbiertos: d.soporte ? (d.soporte.pendientes || 0) + (d.soporte.enProceso || 0) + (d.soporte.reabiertos || 0) : 0,
+      sopReabiertos: d.soporte ? d.soporte.reabiertos || 0 : 0,
+      sopPendientes: d.soporte ? d.soporte.pendientes || 0 : 0
     };
   }
 
@@ -479,6 +501,7 @@
     var n = cifrasDe(ARRANQUE || {});
     burbuja(acc.usuarios, n.bloqueados, 'bloqueados', 'Nadie bloqueado ahora');
     burbuja(acc.mant, n.mantenimiento ? 1 : 0, 'en mantenimiento', 'Todas las apps abiertas');
+    burbuja(acc.soportes, n.sopAbiertos, 'soportes por atender', '');
     var caja = K.nodo('<div class="kit-tarjeta resumen__caja ct-resumen"></div>');
     var ref = K.nodo('<button type="button" class="kit-btn kit-btn--plano ct-recargar ct-recargar--mini" aria-label="Refrescar las cifras">' +
       K.icono('recargar', 16) + '<span>Refrescar</span></button>');
@@ -496,6 +519,7 @@
       [n.bloqueados, 'Bloqueados ahora', 'usuarios/BLOQUEADOS'],
       [n.sinCelular, 'Sin celular', 'usuarios/SIN_CELULAR'],
       [n.claveDoc, 'Contraseña = documento', 'usuarios/CLAVE_DOC'],
+      [n.sopAbiertos, 'Soportes por atender', 'soportes'],
       [n.cambiosHoy, 'Cambios hoy', 'bitacora']
     ].forEach(function (c) {
       var b = K.nodo('<button type="button" class="ct-cifra"><b>' + K.numero(c[0] || 0) + '</b><span>' + K.esc(c[1]) + '</span></button>');
@@ -509,6 +533,8 @@
     if (!n.festivosAlDia) alertas.push(['aviso', 'reloj', 'Los festivos de la hoja no coinciden con los calculados: revísalos', 'configuracion/calendario']);
     if (n.supSinGrupo) alertas.push(['aviso', 'whatsapp', n.supSinGrupo + (n.supSinGrupo === 1 ? ' supervisor sin grupo de WhatsApp' : ' supervisores sin grupo de WhatsApp'), 'configuracion/supervisores']);
     if (n.huerfanos) alertas.push(['info', 'whatsapp', n.huerfanos + (n.huerfanos === 1 ? ' grupo de un supervisor que ya no está en la lista' : ' grupos de supervisores que ya no están en la lista'), 'configuracion/supervisores']);
+    if (n.sopReabiertos) alertas.push(['malo', 'salvavidas', n.sopReabiertos + (n.sopReabiertos === 1 ? ' soporte REABIERTO: lo calificaron mal' : ' soportes REABIERTOS: los calificaron mal'), 'soportes']);
+    if (n.sopPendientes) alertas.push(['aviso', 'salvavidas', n.sopPendientes + (n.sopPendientes === 1 ? ' soporte pendiente sin responder' : ' soportes pendientes sin responder'), 'soportes']);
     if (n.sinCelular) alertas.push(['aviso', 'telefono', n.sinCelular + (n.sinCelular === 1 ? ' usuario activo sin celular: no recibe ni recupera la contraseña' : ' usuarios activos sin celular: no reciben ni recuperan la contraseña'), 'usuarios/SIN_CELULAR']);
     if (n.sinCorreo) alertas.push(['info', 'sobre', n.sinCorreo + ' usuarios activos sin correo (no reciben avisos por correo)', 'usuarios/SIN_CORREO']);
     var t = K.nodo('<div class="ad-alertas"></div>');

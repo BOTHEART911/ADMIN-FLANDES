@@ -48,6 +48,8 @@ var ARMAZON = [
   './js/bitacora.js',
   /* 10.3 */
   './js/recordatorios.js',
+  /* 10.4 */
+  './js/soportes.js',
   /* 10.2 · contratistas */
   './js/contratistas.js',
   './js/gestion.js',

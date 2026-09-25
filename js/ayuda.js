@@ -52,6 +52,8 @@
       t += 'Hay **' + act + '** usuarios activos en las apps de funcionarios. ';
       var m = a.mantenimiento || {};
       if (m.activo) t += '**Ojo: el modo mantenimiento está ENCENDIDO** (' + ((m.apps || []).length ? m.apps.join(', ') : 'todas las apps') + '). ';
+      var so = a.soporte;
+      if (so && (so.pendientes || so.reabiertos || so.enProceso)) t += 'En **SOPORTES** hay **' + ((so.pendientes || 0) + (so.enProceso || 0) + (so.reabiertos || 0)) + '** por atender' + (so.reabiertos ? ' (' + so.reabiertos + ' reabiertos)' : '') + '. ';
       t += 'En **CONTRATISTAS** gestionas cualquier contrato (datos, novedades, cesión, cuentas en silencio y canal). Abajo, lo que pide atención: toca una línea y abre la vista ya filtrada.';
       return {
         guia: t,
@@ -178,6 +180,70 @@
   };
   function h12(hm) { var p = String(hm || '').split(':'), h = +p[0], m = +p[1]; return isNaN(h) ? hm : (h % 12 || 12) + ':' + ('0' + m).slice(-2) + (h >= 12 ? ' pm' : ' am'); }
 
+  /* ══════════════ 10.4 · soportes ══════════════ */
+  function SO() { return window.SOPORTES ? window.SOPORTES._datos() : null; }
+  function soLista() { var d = SO(); return (d && d.lista) || []; }
+  var SO_APP = { CONTRATISTA: 'Contratista', CONTRATACION: 'Contratación', SUPERVISION: 'Supervisión', CONTABILIDAD: 'Contabilidad', TESORERIA: 'Tesorería', COMUNICACIONES: 'Comunicaciones', ADMIN: 'Admin' };
+  function soDias(f) {
+    var m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(String(f || ''));
+    if (!m) return -1;
+    var d = new Date(+m[3], +m[2] - 1, +m[1]), hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    return Math.round((hoy - d) / 864e5);
+  }
+
+  GUIAS.soportes = function () {
+    var d = SO(), t;
+    if (!d) t = 'Los soportes están cargando.';
+    else {
+      var c = d.cifras || {};
+      var abiertos = (c.PENDIENTE || 0) + (c['EN PROCESO'] || 0) + (c.REABIERTO || 0);
+      t = hola() + 'hay **' + c.total + '** soportes. ' + (abiertos ? '**' + abiertos + '** por atender' + (c.REABIERTO ? ' (**' + c.REABIERTO + ' reabiertos**: los calificaron mal)' : '') + '. ' : 'No hay nada por atender. ✓ ') +
+          (c.calificados ? 'La atención va en **' + String(c.promedio).replace('.', ',') + ' de 5** con ' + c.calificados + (c.calificados === 1 ? ' calificación' : ' calificaciones') + '. ' : '') +
+          'Al dejar un caso **resuelto**, a la persona le salen las estrellas la próxima vez que abra su app; con 1 o 2 vuelve aquí. **Cargar un soporte** registra lo que atendiste por teléfono o en persona.';
+    }
+    return {
+      guia: t,
+      botones: [
+        { texto: '¿Qué está esperando respuesta?', responde: function () {
+            var l = soLista().filter(function (x) { return x.estado === 'PENDIENTE' || x.estado === 'REABIERTO' || x.estado === 'EN PROCESO'; })
+              .sort(function (a, b) { return soDias(b.fecha) - soDias(a.fecha); });
+            return l.length ? '**' + l.length + '** por atender, el que más lleva primero:\n' + listaCorta(l, function (x) {
+              var n = soDias(x.fecha);
+              return '· **' + x.id + '** ' + nombre(x.emisor) + ' (' + (SO_APP[x.app] || x.app) + ') — ' + x.estado + (n >= 0 ? ', ' + (n === 0 ? 'hoy' : 'hace ' + n + (n === 1 ? ' día' : ' días')) : ', sin fecha (app anterior)');
+            }) : 'Nada por atender. ✓';
+          } },
+        { texto: '¿Cómo nos califican?', responde: function () {
+            var l = soLista().filter(function (x) { return x.estrellas; });
+            if (!l.length) return 'Todavía nadie ha calificado. Las estrellas salen cuando dejas un caso **resuelto**.';
+            var c = [0, 0, 0, 0, 0, 0], s = 0;
+            l.forEach(function (x) { c[x.estrellas]++; s += x.estrellas; });
+            var t2 = 'Promedio **' + String(Math.round(s / l.length * 10) / 10).replace('.', ',') + ' de 5** en ' + l.length + (l.length === 1 ? ' calificación' : ' calificaciones') + ':';
+            for (var i = 5; i >= 1; i--) if (c[i]) t2 += '\n· ' + i + '★: **' + c[i] + '**';
+            var com = l.filter(function (x) { return x.comentario; }).slice(0, 3);
+            if (com.length) t2 += '\nLo último que dijeron:\n' + com.map(function (x) { return '· “' + x.comentario + '” (' + x.estrellas + '★, ' + nombre(x.emisor) + ')'; }).join('\n');
+            return t2;
+          } },
+        { texto: '¿Qué se reabrió y por qué?', responde: function () {
+            var l = soLista().filter(function (x) { return x.reabierto; });
+            return l.length ? listaCorta(l, function (x) { return '· **' + x.id + '** ' + nombre(x.emisor) + ': ' + (x.estado === 'REABIERTO' ? '**sigue reabierto**' : x.estado.toLowerCase()) + (x.comentario ? ' — “' + x.comentario + '”' : ''); }) : 'Ningún caso se ha reabierto. ✓';
+          } },
+        { texto: '¿Quién pide más soporte?', responde: function () {
+            var c = {}, a = {};
+            soLista().forEach(function (x) { var k = nombre(x.emisor); c[k] = (c[k] || 0) + 1; a[x.app] = (a[x.app] || 0) + 1; });
+            var k = Object.keys(c).sort(function (x, y) { return c[y] - c[x]; });
+            if (!k.length) return 'No hay soportes.';
+            return listaCorta(k, function (x) { return '· **' + x + '**: ' + c[x]; }, 6) + '\nPor app: ' + Object.keys(a).map(function (x) { return (SO_APP[x] || x) + ' ' + a[x]; }).join(', ') + '.';
+          } },
+        { texto: '¿Qué estoy viendo?', responde: function () {
+            var l = window.SOPORTES ? window.SOPORTES._filtradas() : [];
+            var c = {};
+            l.forEach(function (x) { c[x.estado] = (c[x.estado] || 0) + 1; });
+            return 'Estás viendo **' + l.length + '** soportes' + (l.length ? ': ' + Object.keys(c).map(function (k) { return c[k] + ' ' + k.toLowerCase(); }).join(', ') : '') + '. El **PDF** los agrupa por app con la calificación de cada uno; el **Excel** trae una fila por caso con el historial.';
+          } }
+      ]
+    };
+  };
+
   /* ══════════════ 10.2 · contratistas ══════════════ */
   function CA() { return window.CONTRATOS_ADMIN ? (window.CONTRATOS_ADMIN._ultima() || {}) : {}; }
 
@@ -216,7 +282,7 @@
 
   /* las guías de la lista, la ficha, agregar, adición, cesión, suspensión, editar y la
      carga masiva son las de CONTRATACION: js/ayuda-contratos.js (archivo compartido) */
-  var TITULOS = { inicio: 'Tu inicio', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora', recordatorios: 'Recordatorios',
+  var TITULOS = { inicio: 'Tu inicio', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora', recordatorios: 'Recordatorios', soportes: 'Soportes',
                   novedad: 'Novedades del contrato', datos: 'Todos los datos del contrato' };
   if (window.AYUDA_CONTRATOS) window.AYUDA_CONTRATOS.sumar(GUIAS, TITULOS);
 

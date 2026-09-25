@@ -29,6 +29,7 @@
   var K = window.KIT;
   var C = {};
   var ULTIMA = null;           /* lo que está en pantalla, para Insights */
+  var AL_SOPORTE = null;       /* 10.4 · app.js: avisa a SOPORTES y al inicio */
 
   var NOVEDADES = [
     { tipo: 'OTROSI', t: 'Otrosí', ico: 'documento', p: 'Solo información: qué cambió y desde cuándo. Puede avisar al contratista para que lo adjunte.' },
@@ -139,9 +140,18 @@
       est.classList.add('ad-cta__est--' + (TONO[cu.estado] || 'nada'));
       t.querySelector('.ad-cta__p').textContent = [cu.radicada ? 'Radicada ' + cu.radicada : 'Sin radicar', cu.cobro ? K.pesos(cu.cobro) : ''].filter(Boolean).join(' · ');
       t.querySelector('.ad-cta__traza').textContent = cu.ultima ? 'Último movimiento: ' + cu.ultima : '';
+      var bs = K.nodo('<div class="ad-cta__bs"></div>');
       var b = K.nodo('<button type="button" class="kit-btn kit-btn--plano ad-mini">' + K.icono('lapiz', 13) + ' Cambiar estado</button>');
       b.addEventListener('click', function () { estadoCuenta(d, cu, a.estados); });
-      t.appendChild(b);
+      bs.appendChild(b);
+      /* 10.4 · rehacer los documentos combinados de su carpeta (no desde ORDEN DE PAGO) */
+      if (cu.carpeta) {
+        var bd = K.nodo('<button type="button" class="kit-btn kit-btn--plano ad-mini">' + K.icono('girar', 13) + ' Rehacer documentos</button>');
+        if (cu.bloqueoDocs) { bd.classList.add('ad-mini--bloq'); bd.title = cu.bloqueoDocs; }
+        bd.addEventListener('click', function () { if (cu.bloqueoDocs) { K.aviso(cu.bloqueoDocs, 'aviso', 8000); return; } rehacer(d, cu, f); });
+        bs.appendChild(bd);
+      }
+      t.appendChild(bs);
       sc.appendChild(t);
     });
     arriba(sc);
@@ -191,6 +201,41 @@
           listo: { titulo: 'Estado al día', paso: elegido }
         }).then(function () { m.cerrar(); aLaFicha(d.idContrato); }, function (e) { m.botones[1].disabled = false; mal(e); });
       } }] });
+  }
+
+  /* ══════════════ 10.4 · rehacer los documentos de la cuenta ══════════════ */
+
+  function rehacer(d, cu, f) {
+    var fo = K.nodo('<div class="formulario ad-form">' +
+      '<p class="formulario__nota formulario__nota--fuerte">Cuenta ' + K.esc(cu.informe) + ' · ' + K.esc(cu.estado) + '. Se vuelven a generar los <b>documentos combinados</b> de la carpeta de la cuenta ' +
+      '(formato de actividades, de evidencias, exoneración y equivalente a factura, los que le toquen) con los datos que hay <b>hoy</b> en la hoja. ' +
+      'Los anteriores se <b>eliminan definitivamente</b>. La cuenta no cambia de estado.</p>' +
+      '<label class="campo"><span>Motivo (le llega al contratista y queda en el soporte)</span><textarea rows="3" maxlength="500" placeholder="Ej: se corrigió el valor de la planilla en la hoja"></textarea></label>' +
+      '<label class="op-check cf-sw"><input type="checkbox" checked><span>Avisar a ' + K.esc(nombre(f.nombre)) + ' (push y WhatsApp) para que lo revise y califique el soporte</span></label>' +
+      '<p class="formulario__nota">Tarda entre medio minuto y dos: se arma cada PDF con sus evidencias. Queda en SOPORTES como soporte hecho y en la bitácora.</p></div>');
+    var txt = fo.querySelector('textarea');
+    var m = O().modal({ titulo: 'Rehacer documentos · cuenta ' + cu.informe, cuerpo: fo,
+      botones: [{ texto: 'Cancelar', al: function () { m.cerrar(); } }, { texto: 'Rehacer', icono: 'girar', marca: true, al: function () {
+        var mot = txt.value.trim();
+        if (mot.length < 5) { txt.focus(); K.aviso('Escribe el motivo.', 'aviso', 4000); return; }
+        m.botones[1].disabled = true;
+        K.ocupado = true;
+        K.piezas.guardado.mientras(K.pedir('documentosRehacer', { idContrato: d.idContrato, fila: cu.fila, informe: cu.informe, motivo: mot,
+          avisar: fo.querySelector('input[type=checkbox]').checked }, { ms: 330000 }), {
+          titulo: 'Rehaciendo los documentos', sub: 'Cuenta ' + cu.informe + ' · ' + nombre(f.nombre),
+          pasos: ['Comprobando la cuenta', 'Armando cada PDF con sus evidencias', 'Eliminando los anteriores', 'Avisando y dejando el soporte'],
+          listo: { titulo: 'Documentos al día', paso: 'Cuenta ' + cu.informe }
+        }).then(function (r) {
+          K.ocupado = false;
+          recibir(r);
+          if (AL_SOPORTE) AL_SOPORTE(r);
+          m.cerrar();
+          aLaFicha(d.idContrato);
+          K.aviso('Se rehicieron ' + r.documentos.length + (r.documentos.length === 1 ? ' documento' : ' documentos') + ' · soporte ' + r.soporte.id +
+            (r.errores && r.errores.length ? '. No salieron: ' + r.errores.join(' · ') : '.'), r.errores && r.errores.length ? 'aviso' : 'ok', 9000);
+        }, function (e) { K.ocupado = false; m.botones[1].disabled = false; mal(e); });
+      } }] });
+    setTimeout(function () { txt.focus(); }, 120);
   }
 
   /* ══════════════ #/novedad/<id> y #/novedad/<id>/<TIPO> ══════════════ */
@@ -426,6 +471,7 @@
   window.CONTRATOS_ADMIN = {
     configurar: function (c) { C = c || {}; },
     novedad: novedad, datos: datos,
+    alSoporte: function (fn) { AL_SOPORTE = fn; },
     _ultima: function () { return ULTIMA; }, _novedades: NOVEDADES
   };
 }());
