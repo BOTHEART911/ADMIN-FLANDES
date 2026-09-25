@@ -474,7 +474,35 @@
     };
   };
 
-  var TITULOS = { inicio: 'Tu inicio', comunicados: 'Comunicados', mibot: 'Mi bot', tablero: 'Tablero del ecosistema', rendimiento: 'Tablero de rendimiento', atrasos: 'Cuentas atrasadas', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora', recordatorios: 'Recordatorios', soportes: 'Soportes',
+  /* ══════════════ ajuste 4 · tutoriales en video ══════════════ */
+
+  function TU() { return window.TUTORIALES ? window.TUTORIALES._datos() : null; }
+  GUIAS.tutoriales = function () {
+    var d = TU();
+    var t = hola() + 'aquí manejas los videos de **TUTORIALES DE USO** de la app del contratista. ';
+    if (d) {
+      t += 'La vista está **' + (d.activo ? 'ENCENDIDA' : 'APAGADA') + '** y hay **' + (d.activos || 0) + '** de ' + (d.videos || []).length + ' tutoriales activos. ';
+      if (d.enCloudinary) t += 'Ojo: **' + d.enCloudinary + '** portadas siguen en Cloudinary. ';
+    }
+    t += 'Para cambiar un video: súbelo a la carpeta TUTORIALES EN VIDEO, toca **Editar** y pega su enlace.';
+    return {
+      guia: t,
+      botones: [
+        { texto: '¿Cómo cambio un video?', responde: function () {
+            return '1. Toca **Ir a carpeta** y sube el video nuevo a Drive.\n2. En el tutorial toca **Editar** y pega el enlace del video.\n3. Si quieres, sube una **portada** (imagen 16:9).\n4. **Guardar**: el CORE comprueba que sea un video, lo comparte con enlace y toma la duración. Los me gusta y comentarios se conservan.';
+          } },
+        { texto: '¿Qué ve el contratista si apago?', responde: function () {
+            return 'No ve la tarjeta **TUTORIALES DE USO** en su inicio y, si tenía el enlace guardado, el servidor no le entrega los videos. No se borra nada: al encender vuelve todo como estaba.';
+          } },
+        { texto: '¿Cuáles tienen más vistas?', responde: function () {
+            var l = ((TU() || {}).videos || []).slice().sort(function (a, b) { return (b.vistas || 0) - (a.vistas || 0); }).slice(0, 5);
+            return l.length ? l.map(function (v, i) { return (i + 1) + '. **' + v.titulo + '** · ' + (v.vistas || 0) + ' vistas'; }).join('\n') : 'Todavía no cargó la lista.';
+          } }
+      ]
+    };
+  };
+
+  var TITULOS = { inicio: 'Tu inicio', comunicados: 'Comunicados', mibot: 'Mi bot', tutoriales: 'Tutoriales en video', tablero: 'Tablero del ecosistema', rendimiento: 'Tablero de rendimiento', atrasos: 'Cuentas atrasadas', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora', recordatorios: 'Recordatorios', soportes: 'Soportes',
                   novedad: 'Novedades del contrato', datos: 'Todos los datos del contrato' };
   if (window.AYUDA_CONTRATOS) window.AYUDA_CONTRATOS.sumar(GUIAS, TITULOS);
 

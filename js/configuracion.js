@@ -69,6 +69,7 @@
     GRUPO_CONTRATACION: ['grupos', 'Grupo de Contratación (cuentas que aprueba el supervisor y recordatorio de las revisadas)', 'grupo'],
     PLANTILLAS_ACTIVIDADES: ['plantillas', 'Actividades y evidencias según el número de obligaciones', 'tramosPlantilla'],
     CARPETA_GUIAS: ['guias', 'Carpeta GUÍAS RÁPIDAS (Drive)', 'carpeta'],
+    CARPETA_TUTORIALES: ['grupos', 'Carpeta TUTORIALES EN VIDEO (videos y portadas del contratista)', 'carpeta'],
     GUIA_CONTRATISTA: ['guias', 'Guía de Contratista', 'guia'],
     GUIA_CONTRATACION: ['guias', 'Guía de Contratación', 'guia'],
     GUIA_SUPERVISION: ['guias', 'Guía de Supervisión', 'guia'],
@@ -124,7 +125,9 @@
   var PROPIAS = ['FESTIVOS', 'FESTIVOS_AJUSTES', 'CORTES_POR_MES', 'CIERRE_VIGENCIA', 'MANTENIMIENTO', 'GRUPOS_SUPERVISOR',
                  'PLANTILLAS', 'CANALES_POR_TIPO', 'SUPERVISION_ALCANCE', 'DECISION_USUARIOS',
                  /* 10.3 · tienen su propia vista: RECORDATORIOS */
-                 'RECORDATORIOS', 'NOTIFICACION_FINAL'];
+                 'RECORDATORIOS', 'NOTIFICACION_FINAL',
+                 /* ajuste 4 · el interruptor vive en su vista: TUTORIALES EN VIDEO (no deja encender sin videos) */
+                 'TUTORIALES_ACTIVO'];
   var DE_OTRA_APP = { RETENCIONES: 'Contabilidad y Tesorería', CUENTAS_CONTABLES: 'Contabilidad', CUENTA_BANCO_EGRESO: 'Tesorería', CONTABLE_REGLAS: 'Contabilidad',
                       CONTABLE_CATALOGO: 'Contabilidad', DESTINACIONES: 'Tesorería', EGRESO_FIRMANTES: 'Tesorería', EGRESO_REGLAS: 'Tesorería', EMBARGOS: 'Tesorería' };
 

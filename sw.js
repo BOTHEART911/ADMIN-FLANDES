@@ -56,6 +56,7 @@ var ARMAZON = [
   './js/comunicados.js',
   './js/mibot.js',
   './js/tablero.js',
+  './js/tutoriales.js',
   /* 10.2 · contratistas */
   './js/contratistas.js',
   './js/gestion.js',
