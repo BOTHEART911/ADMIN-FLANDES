@@ -211,6 +211,17 @@
     }
     MODULOS.forEach(function (m) { if (window[m]) window[m].configurar(C); });
     ['CONTRATISTAS', 'GESTION', 'MASIVA', 'CONTRATOS_ADMIN'].forEach(function (m) { if (window[m]) window[m].configurar(contextoContratos()); });
+    /* 10.5 · cuentas atrasadas de todo el ecosistema (mismo js/atrasos.js de SUPERVISIÓN) */
+    if (window.ATRASOS) window.ATRASOS.configurar({
+      modo: 'ADMIN', app: app, irA: irA, errorCaja: errorCaja, puede: puede,
+      traer: function (fresco) {
+        return leer('atrasos', { fresco: fresco !== false }).then(function (d) {
+          /* la cifra del inicio sigue a la vista sin otro viaje */
+          if (ARRANQUE) ARRANQUE.atrasos = { total: (d.lista || []).length, fecha: d.fecha, calculado: d.calculado };
+          return d;
+        });
+      }
+    });
     /* 10.4 · la ficha del contratista avisa a SOPORTES y al inicio cuando rehace documentos */
     if (window.CONTRATOS_ADMIN && window.CONTRATOS_ADMIN.alSoporte) window.CONTRATOS_ADMIN.alSoporte(function (r) {
       if (r && r.resumen) C.soporte(r.resumen);
@@ -299,6 +310,7 @@
     if (K.piezas.insights) K.piezas.insights.quitar();
     MODULOS.forEach(function (m) { if (window[m] && window[m].olvidar) window[m].olvidar(); });
     if (window.CONTRATISTAS && window.CONTRATISTAS.olvidar) window.CONTRATISTAS.olvidar();
+    if (window.ATRASOS) window.ATRASOS.olvidar();
     ARRANQUE = null;
     K.piezas.sesion.salir();
     location.hash = '';
@@ -315,6 +327,8 @@
     recordatorios: function () { window.RECORDATORIOS.vista(); },
     /* 10.4 · soporte profesional */
     soportes: function (sub) { window.SOPORTES.vista(sub); },
+    /* 10.5 · cuentas atrasadas */
+    atrasos: function () { window.ATRASOS.vista(); },
     /* 10.2 · contratistas (las vistas de CONTRATACION) */
     contratistas: function (sub) { window.CONTRATISTAS.lista(sub); },
     contratista: function (sub) { window.CONTRATISTAS.detalle(sub); },
@@ -336,6 +350,7 @@
     bitacora: 'BITÁCORA',
     recordatorios: 'RECORDATORIOS',
     soportes: 'SOPORTES',
+    atrasos: 'CUENTAS ATRASADAS',
     contratistas: 'CONTRATISTAS',
     contratista: 'DETALLES DEL CONTRATISTA',
     agregar: 'AGREGAR CONTRATISTA',
@@ -348,7 +363,7 @@
     datos: 'TODOS LOS DATOS'
   };
 
-  var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora', recordatorios: 'configuracion', soportes: 'soportes',
+  var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora', recordatorios: 'configuracion', soportes: 'soportes', atrasos: 'configuracion',
     contratistas: 'contratistas', contratista: 'contratistas', agregar: 'agregarContratista', masiva: 'agregarContratista',
     adicion: 'adicion', cesion: 'cesion', suspension: 'suspension', editar: 'editarContratista',
     novedad: 'contratistas', datos: 'contratistas' };
@@ -436,6 +451,9 @@
       tC.push(accesoIcono('CARGA MASIVA', 'Varios contratos de una vez con la plantilla de Excel: se revisan antes de registrar', 'hoja',
         function () { irA('masiva'); }));
     }
+    /* 10.5 · quién no presentó la cuenta a tiempo, el aviso push y el plazo */
+    if (puede('configuracion')) tC.push(acc.atrasos = accesoIcono('CUENTAS ATRASADAS', 'Quién no presentó la cuenta al supervisor a tiempo, el aviso push y el plazo en días hábiles', 'vencido',
+      function () { irA('atrasos'); }));
     if (tC.length) bloque('CONTRATISTAS', tC);
 
     var tA = [];
@@ -487,7 +505,9 @@
       /* 10.4 · soporte */
       sopAbiertos: d.soporte ? (d.soporte.pendientes || 0) + (d.soporte.enProceso || 0) + (d.soporte.reabiertos || 0) : 0,
       sopReabiertos: d.soporte ? d.soporte.reabiertos || 0 : 0,
-      sopPendientes: d.soporte ? d.soporte.pendientes || 0 : 0
+      sopPendientes: d.soporte ? d.soporte.pendientes || 0 : 0,
+      /* 10.5 · solo si el CORE ya lo tenía calculado hoy (no frena el arranque) */
+      atrasados: d.atrasos ? d.atrasos.total || 0 : 0
     };
   }
 
@@ -502,6 +522,7 @@
     burbuja(acc.usuarios, n.bloqueados, 'bloqueados', 'Nadie bloqueado ahora');
     burbuja(acc.mant, n.mantenimiento ? 1 : 0, 'en mantenimiento', 'Todas las apps abiertas');
     burbuja(acc.soportes, n.sopAbiertos, 'soportes por atender', '');
+    burbuja(acc.atrasos, n.atrasados, 'contratistas atrasados', '');
     var caja = K.nodo('<div class="kit-tarjeta resumen__caja ct-resumen"></div>');
     var ref = K.nodo('<button type="button" class="kit-btn kit-btn--plano ct-recargar ct-recargar--mini" aria-label="Refrescar las cifras">' +
       K.icono('recargar', 16) + '<span>Refrescar</span></button>');
@@ -534,6 +555,7 @@
     if (n.supSinGrupo) alertas.push(['aviso', 'whatsapp', n.supSinGrupo + (n.supSinGrupo === 1 ? ' supervisor sin grupo de WhatsApp' : ' supervisores sin grupo de WhatsApp'), 'configuracion/supervisores']);
     if (n.huerfanos) alertas.push(['info', 'whatsapp', n.huerfanos + (n.huerfanos === 1 ? ' grupo de un supervisor que ya no está en la lista' : ' grupos de supervisores que ya no están en la lista'), 'configuracion/supervisores']);
     if (n.sopReabiertos) alertas.push(['malo', 'salvavidas', n.sopReabiertos + (n.sopReabiertos === 1 ? ' soporte REABIERTO: lo calificaron mal' : ' soportes REABIERTOS: los calificaron mal'), 'soportes']);
+    if (n.atrasados) alertas.push(['aviso', 'vencido', n.atrasados + (n.atrasados === 1 ? ' contratista con la cuenta atrasada' : ' contratistas con la cuenta atrasada'), 'atrasos']);
     if (n.sopPendientes) alertas.push(['aviso', 'salvavidas', n.sopPendientes + (n.sopPendientes === 1 ? ' soporte pendiente sin responder' : ' soportes pendientes sin responder'), 'soportes']);
     if (n.sinCelular) alertas.push(['aviso', 'telefono', n.sinCelular + (n.sinCelular === 1 ? ' usuario activo sin celular: no recibe ni recupera la contraseña' : ' usuarios activos sin celular: no reciben ni recuperan la contraseña'), 'usuarios/SIN_CELULAR']);
     if (n.sinCorreo) alertas.push(['info', 'sobre', n.sinCorreo + ' usuarios activos sin correo (no reciben avisos por correo)', 'usuarios/SIN_CORREO']);

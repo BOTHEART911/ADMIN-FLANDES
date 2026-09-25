@@ -53,6 +53,7 @@
       var m = a.mantenimiento || {};
       if (m.activo) t += '**Ojo: el modo mantenimiento está ENCENDIDO** (' + ((m.apps || []).length ? m.apps.join(', ') : 'todas las apps') + '). ';
       var so = a.soporte;
+      if (a.atrasos && a.atrasos.total) t += 'Hay **' + a.atrasos.total + '** ' + (a.atrasos.total === 1 ? 'contratista' : 'contratistas') + ' con la cuenta atrasada (**CUENTAS ATRASADAS**). ';
       if (so && (so.pendientes || so.reabiertos || so.enProceso)) t += 'En **SOPORTES** hay **' + ((so.pendientes || 0) + (so.enProceso || 0) + (so.reabiertos || 0)) + '** por atender' + (so.reabiertos ? ' (' + so.reabiertos + ' reabiertos)' : '') + '. ';
       t += 'En **CONTRATISTAS** gestionas cualquier contrato (datos, novedades, cesión, cuentas en silencio y canal). Abajo, lo que pide atención: toca una línea y abre la vista ya filtrada.';
       return {
@@ -282,7 +283,58 @@
 
   /* las guías de la lista, la ficha, agregar, adición, cesión, suspensión, editar y la
      carga masiva son las de CONTRATACION: js/ayuda-contratos.js (archivo compartido) */
-  var TITULOS = { inicio: 'Tu inicio', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora', recordatorios: 'Recordatorios', soportes: 'Soportes',
+  /* ══════════════ 10.5 · cuentas atrasadas ══════════════ */
+  function AT() { return window.ATRASOS ? window.ATRASOS._datos() : null; }
+  function nomAt(s) { return K.piezas.personas ? K.piezas.personas.nombrePropio(s) : String(s || ''); }
+
+  GUIAS.atrasos = function () {
+    var d = AT(), l = d ? (d.lista || []) : [];
+    var t;
+    if (!d) t = 'Las cuentas atrasadas están cargando.';
+    else if (!l.length) t = 'Nadie tiene la cuenta atrasada: todos presentaron dentro del plazo de **' + (d.dias || 5) + ' días hábiles**. ✓';
+    else {
+      var v = 0; l.forEach(function (x) { v += x.pendientes || 1; });
+      t = '**' + l.length + '** ' + (l.length === 1 ? 'contratista tiene' : 'contratistas tienen') + ' la cuenta atrasada (**' + v + '** ' + (v === 1 ? 'cuenta vencida' : 'cuentas vencidas') + ' sin presentar). ' +
+          'La regla: presentar al supervisor dentro de **' + (d.dias || 5) + ' días hábiles** después del fin del periodo, sin fines de semana ni festivos. ' +
+          '**Compartir** abre el compartir de tu teléfono o computador con la lista escrita: tú escoges el chat, el grupo o el correo.';
+    }
+    if (d && d.cfg && d.cfg.push) t += ' El aviso push al contratista está **' + (d.cfg.push.activo ? 'ENCENDIDO' : 'APAGADO') + '**' + (d.porAvisar ? ' y ' + d.porAvisar + ' atrasados aún no lo tienen' : '') + '.';
+    if (d && d.sinDatos && d.sinDatos.length) t += ' Ojo: **' + d.sinDatos.length + '** contratos activos no tienen fechas o total de informes, y no se pueden evaluar.';
+    return {
+      guia: t,
+      botones: [
+        { texto: '¿Quién lleva más días?', responde: function () {
+            var x = AT() && AT().lista || [];
+            if (!x.length) return '¡Nadie está atrasado!';
+            return listaCorta(x, function (a) { return '· **' + nomAt(a.nombre) + '** — cuenta ' + a.informe + ' de ' + a.total + ', venció el ' + a.limite + ' (' + a.dias + (a.dias === 1 ? ' día hábil' : ' días hábiles') + ')'; }, 6);
+          } },
+        { texto: '¿Quién debe varias cuentas?', responde: function () {
+            var x = (AT() && AT().lista || []).filter(function (a) { return a.pendientes > 1; });
+            if (!x.length) return 'Nadie debe más de una cuenta vencida.';
+            return listaCorta(x, function (a) { return '· **' + nomAt(a.nombre) + '** — ' + a.pendientes + ' cuentas vencidas, desde la ' + a.informe; }, 8);
+          } },
+        { texto: '¿Quién la tiene lista y no la reporta?', responde: function () {
+            var x = (AT() && AT().lista || []).filter(function (a) { return a.estado === 'INGRESADA'; });
+            if (!x.length) return 'Nadie tiene la cuenta atrasada ya ingresada sin reportar.';
+            return 'Ya la ingresaron pero les falta **reportarla** en su app:\n' + listaCorta(x, function (a) { return '· **' + nomAt(a.nombre) + '** — cuenta ' + a.informe; }, 8);
+          } },
+        { texto: '¿Por supervisor?', responde: function () {
+            var x = AT() && AT().lista || [], n = {};
+            x.forEach(function (a) { n[a.sup] = (n[a.sup] || 0) + 1; });
+            var k = Object.keys(n).sort(function (a, b) { return n[b] - n[a]; });
+            return k.length ? k.map(function (s) { return '· **' + nomAt(s) + '**: ' + n[s]; }).join('\n') : 'Nadie está atrasado.';
+          } },
+        { texto: '¿Cómo se cuenta el plazo?', responde: function () {
+            var d = AT() || {};
+            return 'El periodo de cada cuenta va mes a mes desde la fecha de inicio del contrato (o sigue desde el fin de la cuenta anterior). ' +
+              'Desde el día siguiente al fin del periodo se cuentan **' + (d.dias || 5) + ' días hábiles** (sin sábados, domingos ni festivos). ' +
+              'Si al terminar ese día la cuenta no se ha **reportado** al supervisor, queda atrasada. Una cuenta en borrador o ingresada sin reportar no cuenta como presentada.';
+          } }
+      ]
+    };
+  };
+
+  var TITULOS = { inicio: 'Tu inicio', atrasos: 'Cuentas atrasadas', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora', recordatorios: 'Recordatorios', soportes: 'Soportes',
                   novedad: 'Novedades del contrato', datos: 'Todos los datos del contrato' };
   if (window.AYUDA_CONTRATOS) window.AYUDA_CONTRATOS.sumar(GUIAS, TITULOS);
 
