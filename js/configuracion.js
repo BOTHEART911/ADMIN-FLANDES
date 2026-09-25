@@ -16,6 +16,8 @@
      · SUPERVISORES ... la hoja SUPERVISORES y su grupo de WhatsApp
      · GRUPOS Y CARPETAS  ids de grupo y carpetas de Drive con "Ir a carpeta"
      · PLANTILLAS ..... ids de las plantillas con "Ir a plantilla"
+     · GUÍAS RÁPIDAS .. el PDF de cada app ("Descargar guía rápida") con
+                         "Ir a guía"; el CORE exige PDF y lo comparte
      · MENSAJES Y AVISOS  el texto de cada aviso (push, WhatsApp, correo),
                          sus canales y los mensajes de identidad
      · MANTENIMIENTO .. modo mantenimiento, direcciones y versión de cada
@@ -41,6 +43,7 @@
     { id: 'supervisores', t: 'Supervisores', icono: 'persona', p: 'Los supervisores que se pueden escoger al crear un contrato, su celular, su firma y el grupo de WhatsApp al que les llegan los avisos.' },
     { id: 'grupos', t: 'Grupos y carpetas', icono: 'whatsapp', p: 'Los grupos de WhatsApp de cada área y las carpetas de Drive donde el sistema guarda. Pega el enlace o el id: el CORE comprueba que la carpeta exista.' },
     { id: 'plantillas', t: 'Plantillas', icono: 'documento', p: 'Las plantillas de Google con las que se generan los documentos. Pega el enlace o el id: el CORE comprueba que exista.' },
+    { id: 'guias', t: 'Guías rápidas', icono: 'pdf', p: 'El PDF instructivo de cada app y de la web de Solicitud de Prensa: es lo que baja la opción "Descargar guía rápida" del menú. Para reemplazar una guía, sube el PDF nuevo a la carpeta GUÍAS RÁPIDAS y pega aquí su enlace o id: el CORE comprueba que sea un PDF y lo comparte con enlace. Las apps no se vuelven a publicar.' },
     { id: 'mensajes', t: 'Mensajes y avisos', icono: 'campana', p: 'Lo que dice cada aviso del ecosistema (push, WhatsApp y correo) y por qué canal sale. También los mensajes de alta, bienvenida y recuperación de contraseña.' },
     { id: 'mantenimiento', t: 'Mantenimiento', icono: 'candado', p: 'Cierra una app o todas con un mensaje (tú sigues entrando como DEV), las direcciones y la versión publicada de cada app, medios, sonidos, claves, sesión y bot.' },
     { id: 'marca', t: 'Marca', icono: 'lapiz', p: 'Nombres, NIT y firmas que salen en los documentos y en el pie de las siete apps.' },
@@ -65,6 +68,15 @@
     DRIVE_HACIENDA: ['grupos', 'Drive de Hacienda (Supervisión)', 'json'],
     GRUPO_CONTRATACION: ['grupos', 'Grupo de Contratación (cuentas que aprueba el supervisor y recordatorio de las revisadas)', 'grupo'],
     PLANTILLAS_ACTIVIDADES: ['plantillas', 'Actividades y evidencias según el número de obligaciones', 'tramosPlantilla'],
+    CARPETA_GUIAS: ['guias', 'Carpeta GUÍAS RÁPIDAS (Drive)', 'carpeta'],
+    GUIA_CONTRATISTA: ['guias', 'Guía de Contratista', 'guia'],
+    GUIA_CONTRATACION: ['guias', 'Guía de Contratación', 'guia'],
+    GUIA_SUPERVISION: ['guias', 'Guía de Supervisión', 'guia'],
+    GUIA_CONTABILIDAD: ['guias', 'Guía de Contabilidad', 'guia'],
+    GUIA_TESORERIA: ['guias', 'Guía de Tesorería', 'guia'],
+    GUIA_COMUNICACIONES: ['guias', 'Guía de Comunicaciones', 'guia'],
+    GUIA_ADMIN: ['guias', 'Guía de Admin', 'guia'],
+    GUIA_SOLICITUD_PRENSA: ['guias', 'Guía de la web Solicitud de Prensa', 'guia'],
     MENSAJE_BIENVENIDA: ['mensajes', 'Mensaje de bienvenida', 'largo'],
     MENSAJE_ALTA: ['mensajes', 'Mensaje de alta y de contraseña reiniciada', 'largo'],
     MENSAJE_RECUPERAR: ['mensajes', 'Mensaje de "Olvidé mi contraseña"', 'largo'],
@@ -352,6 +364,7 @@
     },
     carpeta: function (t, it) { campoDrive(t, it, true); },
     plantilla: function (t, it) { campoDrive(t, it, false); },
+    guia: function (t, it) { campoDrive(t, it, false, 'guia'); },
     lista: function (t, it) { editorLista(t, it); },
     json: function (t, it) { editorJson(t, it); },
     mapaCarpetas: function (t, it) { editorMapa(t, it, { clave: 'Secretaría', valor: 'Carpeta (enlace o id)', carpeta: true }); },
@@ -370,10 +383,10 @@
     inp.addEventListener('change', function () { l.querySelector('span').textContent = inp.checked ? 'Encendido' : 'Apagado'; r(); });
   }
 
-  function campoDrive(t, it, esCarpeta) {
+  function campoDrive(t, it, esCarpeta, clase) {
     campoTexto(t, it, { extra: function (inp) {
       var fila = K.nodo('<div class="ct-acc ad-drive"></div>');
-      var ir = K.nodo('<a class="kit-btn kit-btn--plano ad-mini" target="_blank" rel="noopener">' + K.icono(esCarpeta ? 'archivo' : 'documento', 14) + ' ' + (esCarpeta ? 'Ir a carpeta' : 'Ir a plantilla') + '</a>');
+      var ir = K.nodo('<a class="kit-btn kit-btn--plano ad-mini" target="_blank" rel="noopener">' + K.icono(esCarpeta ? 'archivo' : (clase === 'guia' ? 'pdf' : 'documento'), 14) + ' ' + (esCarpeta ? 'Ir a carpeta' : (clase === 'guia' ? 'Ir a guía' : 'Ir a plantilla')) + '</a>');
       function poner() { var id = idDe(inp.value); if (id) { ir.href = urlDrive(id, esCarpeta); ir.removeAttribute('aria-disabled'); } else { ir.removeAttribute('href'); ir.setAttribute('aria-disabled', 'true'); } }
       poner();
       inp.addEventListener('input', poner);

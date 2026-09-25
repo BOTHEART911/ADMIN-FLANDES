@@ -97,6 +97,7 @@
     YO = d.yo || YO;
     if (d.personas && K.piezas.personas) K.piezas.personas.cargar(d.personas);
     if (d.push && K.piezas.avisos && K.piezas.avisos.configurar) K.piezas.avisos.configurar(d.push);
+    if (d.config && K.piezas.guia) K.piezas.guia.configurar(d.config);   /* guías rápidas: el id del PDF de cada app llega en la configuración pública */
     if (d.config && K.piezas.creditos && K.piezas.creditos.configurar) K.piezas.creditos.configurar(d.config);
   }
 
@@ -294,6 +295,7 @@
     var menu = [{ texto: 'Foto de perfil', al: abrirFoto }];
     menu.push({ texto: 'Actualizar contraseña', al: function () { K.piezas.sesion.cambiarClave(); } });
     menu.push({ texto: 'Instalar la app', al: function () { K.piezas.instalar.abrir(); } });
+    if (K.piezas.guia) menu.push(K.piezas.guia.opcion('ADMIN'));
     menu.push({ texto: 'Soporte', al: soporte });
     menu.push({ texto: 'Cerrar sesión', al: salir, peligro: true });
     K.piezas.banner.montar({
@@ -590,7 +592,10 @@
     if (n.atrasados) alertas.push(['aviso', 'vencido', n.atrasados + (n.atrasados === 1 ? ' contratista con la cuenta atrasada' : ' contratistas con la cuenta atrasada'), 'atrasos']);
     if (n.sopPendientes) alertas.push(['aviso', 'salvavidas', n.sopPendientes + (n.sopPendientes === 1 ? ' soporte pendiente sin responder' : ' soportes pendientes sin responder'), 'soportes']);
     if (n.sinCelular) alertas.push(['aviso', 'telefono', n.sinCelular + (n.sinCelular === 1 ? ' usuario activo sin celular: no recibe ni recupera la contraseña' : ' usuarios activos sin celular: no reciben ni recuperan la contraseña'), 'usuarios/SIN_CELULAR']);
-    if (n.sinCorreo) alertas.push(['info', 'sobre', n.sinCorreo + ' usuarios activos sin correo (no reciben avisos por correo)', 'usuarios/SIN_CORREO']);
+    /* guías rápidas: una app sin PDF deja su "Descargar guía rápida" sin nada que bajar */
+    var sinGuia = ((ARRANQUE && ARRANQUE.cfg) || []).filter(function (it) { return /^GUIA_/.test(it.llave) && !String(it.valor || '').trim(); }).length;
+    if (sinGuia) alertas.push(['info', 'pdf', sinGuia + (sinGuia === 1 ? ' guía rápida sin PDF publicado' : ' guías rápidas sin PDF publicado'), 'configuracion/guias']);
+    if (n.sinCorreo) alertas.push(['info', 'sobre', n.sinCorreo + (n.sinCorreo === 1 ? ' usuario activo sin correo (no recibe avisos por correo)' : ' usuarios activos sin correo (no reciben avisos por correo)'), 'usuarios/SIN_CORREO']);
     var t = K.nodo('<div class="ad-alertas"></div>');
     if (!alertas.length) t.appendChild(K.nodo('<p class="ct-resumen__t sp-total">' + K.icono('check', 15) + ' Todo en orden: nada pide atención.</p>'));
     alertas.forEach(function (a) {
