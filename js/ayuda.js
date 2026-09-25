@@ -141,6 +141,43 @@
     }
   };
 
+  /* ══════════════ 10.3 · recordatorios y notificación final ══════════════ */
+  function RC() { return window.RECORDATORIOS ? (window.RECORDATORIOS._datos() || null) : null; }
+
+  GUIAS.recordatorios = function () {
+    var v = RC();
+    var t = 'Los recordatorios de cuentas y la notificación final, que antes eran dos scripts sueltos. ';
+    if (v) {
+      t += 'Recordatorios **' + (v.rec.activo ? 'encendidos' : 'apagados') + '**, notificación final **' + (v.fin.activo ? 'encendida' : 'apagada') + '** y reloj **' + (v.reloj > 0 ? 'instalado' : 'sin instalar') + '**. ';
+      if (!v.rec.activo && !v.fin.activo) t += 'Así debe estar mientras se trabaja sobre la copia de trabajo. ';
+    }
+    t += 'La **vista previa** muestra lo que saldría ahora mismo sin mandar nada.';
+    return {
+      guia: t,
+      botones: [
+        { texto: '¿Qué dice cada color?', responde: function () {
+            var c = v ? h12(v.rec.horaCorte) : '4:00 pm';
+            return '🟢 Reportada **hoy**, o el hábil anterior **desde las ' + c + '**.\n🟠 Reportada el hábil anterior **antes de las ' + c + '**.\n🔴 Reportada hace **dos hábiles o más**, a cualquier hora.\nLos fines de semana y los festivos no cuentan: lo del sábado cuenta como del viernes en la tarde.';
+          } },
+        { texto: '¿Qué saldría ahora?', responde: function () {
+            if (!v) return 'La vista previa todavía está cargando.';
+            var p = v.previa;
+            return '· **A supervisores:** ' + p.B1.resumen + (p.B1.mensajes.length ? ' (' + p.B1.mensajes.map(function (m) { return nombre(m.para) + ' ' + m.cuentas; }).join(', ') + ')' : '') +
+              '\n· **A Contratación:** ' + p.B2.resumen + '\n· **Notificación final:** ' + p.FN.resumen + '\n· **Cierre de acceso:** ' + p.FD.resumen;
+          } },
+        { texto: '¿A quién notificaría el lunes?', responde: function () {
+            if (!v) return 'La vista previa todavía está cargando.';
+            var l = v.previa.FN.mensajes;
+            return l.length ? '**' + l.length + '** contratos ACTIVOS con su última cuenta PAGADA:\n' + listaCorta(l, function (m) { return '· ' + nombre(m.para) + ' (' + m.id + ')'; }) + '\nConservan el acceso hasta el **' + (v.previa.FN.hasta || '') + '**.' : 'Ninguno: no hay contratos ACTIVOS con su última cuenta PAGADA.';
+          } },
+        { texto: '¿Cómo lo paso a producción?', responde: function () {
+            return '1. Apaga los activadores de los proyectos viejos **RECORDATORIO_CUENTAS** y **NOTIFICACION_FINAL**.\n2. Con el CORE ya apuntando al libro de producción, enciende aquí los dos interruptores y guarda.\n3. Toca **Instalar el reloj**.\nDesde el siguiente turno sale todo desde el CORE.';
+          } }
+      ]
+    };
+  };
+  function h12(hm) { var p = String(hm || '').split(':'), h = +p[0], m = +p[1]; return isNaN(h) ? hm : (h % 12 || 12) + ':' + ('0' + m).slice(-2) + (h >= 12 ? ' pm' : ' am'); }
+
   /* ══════════════ 10.2 · contratistas ══════════════ */
   function CA() { return window.CONTRATOS_ADMIN ? (window.CONTRATOS_ADMIN._ultima() || {}) : {}; }
 
@@ -179,7 +216,7 @@
 
   /* las guías de la lista, la ficha, agregar, adición, cesión, suspensión, editar y la
      carga masiva son las de CONTRATACION: js/ayuda-contratos.js (archivo compartido) */
-  var TITULOS = { inicio: 'Tu inicio', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora',
+  var TITULOS = { inicio: 'Tu inicio', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora', recordatorios: 'Recordatorios',
                   novedad: 'Novedades del contrato', datos: 'Todos los datos del contrato' };
   if (window.AYUDA_CONTRATOS) window.AYUDA_CONTRATOS.sumar(GUIAS, TITULOS);
 

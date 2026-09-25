@@ -3012,3 +3012,53 @@ textarea.ad-in { resize: vertical; }
 .ad-datos__solo { background: var(--k-papel-2) !important; color: var(--k-apagado) !important; }
 .ad-datos__pie { position: sticky; bottom: 10px; z-index: 5; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; box-shadow: var(--k-sombra-2); }
 @media (max-width: 560px) { .ad-cta { grid-template-columns: 1fr; } .ad-cta > .kit-btn { grid-column: 1; grid-row: auto; justify-self: start; } }
+
+/* ============================================================
+   10.3 · RECORDATORIOS Y NOTIFICACIÓN FINAL (prefijo rc-)
+   Solo variables del kit: igual en modo día y en oscuro.
+   ============================================================ */
+.rc-zona { display: flex; flex-direction: column; gap: 14px; }
+.rc-bloque--on { border-left: 4px solid var(--k-ok); }
+.rc-estado { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin: 6px 0 10px; }
+.rc-estado__f { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--k-r-md); border: 1px solid var(--k-linea); background: var(--k-papel); }
+.rc-estado__f > svg { flex: 0 0 auto; margin-top: 2px; }
+.rc-estado__f b { display: block; font: 700 .86rem/1.3 var(--k-fuente); color: var(--k-tinta); }
+.rc-estado__f span { display: block; font: 500 .78rem/1.35 var(--k-fuente); color: var(--k-apagado); }
+.rc-estado__f--ok { border-color: transparent; background: var(--k-ok-fondo); }
+.rc-estado__f--ok > svg { color: var(--k-ok); }
+.rc-estado__f--off > svg { color: var(--k-apagado); }
+.rc-prox ul, .rc-lista { margin: 4px 0 10px; padding-left: 18px; font: 500 .82rem/1.5 var(--k-fuente); color: var(--k-tinta); }
+.rc-sub { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--k-linea); }
+.rc-sub h4 { display: flex; gap: 6px; align-items: center; margin: 0 0 4px; font: 800 .8rem/1.3 var(--k-fuente); letter-spacing: .03em; color: var(--k-marca); }
+:root[data-tema="oscuro"] .rc-sub h4 { color: var(--k-marca-clara); }
+.rc-sub a { color: var(--k-marca); font-weight: 700; }
+:root[data-tema="oscuro"] .rc-sub a { color: var(--k-marca-clara); }
+.rc-fila { margin-top: 8px; }
+.rc-horas { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+.rc-horas__mas { display: flex; gap: 6px; align-items: center; }
+.rc-horas__mas input { width: 130px; }
+.rc-hora { display: inline-flex; gap: 4px; align-items: center; }
+.rc-hora button { border: 0; background: none; padding: 0 0 0 2px; color: inherit; cursor: pointer; display: inline-flex; }
+.rc-dias { margin: 8px 0; }
+.rc-prios { display: flex; flex-direction: column; gap: 10px; margin: 8px 0; }
+.rc-prio { padding: 10px 12px; }
+.rc-prio__cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.rc-previa { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.rc-previa__res { display: flex; gap: 6px; align-items: center; margin: 0; font: 600 .84rem/1.4 var(--k-fuente); color: var(--k-tinta); }
+.rc-previa__res svg { color: var(--k-marca); }
+.rc-msg { padding: 10px 12px; }
+.rc-msg__cab { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin-bottom: 8px; font: 600 .8rem/1.3 var(--k-fuente); color: var(--k-apagado); }
+.rc-msg__cab b { color: var(--k-tinta); }
+/* el globo de WhatsApp */
+.rc-wa { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; padding: 10px; border-radius: var(--k-r-md); background: rgba(var(--k-marca-rgb), .07); }
+.rc-wa__globo { max-width: 100%; padding: 8px 10px; border-radius: 10px 10px 10px 2px; background: var(--k-papel); border: 1px solid var(--k-linea);
+  font: 500 .84rem/1.45 var(--k-fuente); color: var(--k-tinta); overflow-wrap: anywhere; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.rc-wa__globo--alerta { border-left: 3px solid var(--k-aviso); }
+.rc-wa__cita { display: inline-block; padding-left: 8px; border-left: 3px solid var(--k-linea); color: var(--k-apagado); }
+.rc-ultimas li { margin-bottom: 4px; }
+.rc-ultimas small { display: block; color: var(--k-malo); }
+.rc-ultimas--mal b { color: var(--k-malo); }
+@media (max-width: 520px) {
+  .rc-horas__mas input { width: 110px; }
+  .rc-wa { padding: 8px; }
+}

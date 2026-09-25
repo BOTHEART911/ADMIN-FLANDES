@@ -46,6 +46,8 @@ var ARMAZON = [
   './js/configuracion.js',
   './js/usuarios.js',
   './js/bitacora.js',
+  /* 10.3 */
+  './js/recordatorios.js',
   /* 10.2 · contratistas */
   './js/contratistas.js',
   './js/gestion.js',

@@ -1,6 +1,6 @@
 /* ============================================================
    ADMIN-FLANDES · APP
-   Ecosistema Flandes · Fase 10 · entregas 10.1 y 10.2
+   Ecosistema Flandes · Fase 10 · entregas 10.1, 10.2 y 10.3
 
    La app del desarrollador. La misma cara de las otras apps: franja
    con cielo, tu foto, los accesos por bloques y abajo el resumen de
@@ -15,6 +15,11 @@
        y, por REVISOR, a quién revisa y si decide.
      · BITÁCORA (bitacora.js): todo cambio hecho desde aquí, con PDF y Excel.
      · SOPORTE (tarjeta y menú del perfil).
+
+   Vista de la 10.3:
+     · RECORDATORIOS (recordatorios.js): los dos scripts viejos
+       (RECORDATORIO_CUENTAS y NOTIFICACION_FINAL) ya dentro del CORE,
+       con horas, textos, cuentas prioritarias, vista previa y reloj.
 
    Vistas de la 10.2 (contratistas):
      · CONTRATISTAS, ficha, AGREGAR, ADICIÓN, CESIÓN, SUSPENSIÓN y EDITAR:
@@ -50,7 +55,7 @@
   var ARRANQUE = null;    /* lo que trajo 'inicio' */
   var VERSIONES = {};     /* APP -> versión publicada (de su version.js) */
 
-  var MODULOS = ['CONFIG', 'USUARIOS', 'BITACORA'];
+  var MODULOS = ['CONFIG', 'USUARIOS', 'BITACORA', 'RECORDATORIOS'];
 
   /* Las siete apps con la imagen que las representa en ALCALDIA-MEDIOS */
   var APPS = [
@@ -293,6 +298,8 @@
     configuracion: function (sub) { window.CONFIG.vista(sub); },
     usuarios: function (sub) { window.USUARIOS.vista(sub); },
     bitacora: function () { window.BITACORA.vista(); },
+    /* 10.3 · recordatorios y notificación final (antes scripts sueltos) */
+    recordatorios: function () { window.RECORDATORIOS.vista(); },
     /* 10.2 · contratistas (las vistas de CONTRATACION) */
     contratistas: function (sub) { window.CONTRATISTAS.lista(sub); },
     contratista: function (sub) { window.CONTRATISTAS.detalle(sub); },
@@ -312,6 +319,7 @@
     configuracion: 'CONFIGURACIÓN',
     usuarios: 'USUARIOS Y ROLES',
     bitacora: 'BITÁCORA',
+    recordatorios: 'RECORDATORIOS',
     contratistas: 'CONTRATISTAS',
     contratista: 'DETALLES DEL CONTRATISTA',
     agregar: 'AGREGAR CONTRATISTA',
@@ -324,7 +332,7 @@
     datos: 'TODOS LOS DATOS'
   };
 
-  var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora',
+  var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora', recordatorios: 'configuracion',
     contratistas: 'contratistas', contratista: 'contratistas', agregar: 'agregarContratista', masiva: 'agregarContratista',
     adicion: 'adicion', cesion: 'cesion', suspension: 'suspension', editar: 'editarContratista',
     novedad: 'contratistas', datos: 'contratistas' };
@@ -394,6 +402,8 @@
       function () { irA('configuracion'); }));
     if (puede('usuarios')) tE.push(acc.usuarios = accesoIcono('USUARIOS Y ROLES', 'Quién entra a cada app y con qué rol; contraseñas, desbloqueos y bienvenida', 'persona',
       function () { irA('usuarios'); }));
+    if (puede('configuracion')) tE.push(acc.recordatorios = accesoIcono('RECORDATORIOS', 'Recordatorios de cuentas a supervisores y Contratación, y la notificación final del contrato', 'reloj',
+      function () { irA('recordatorios'); }));
     if (puede('bitacora')) tE.push(acc.bitacora = acceso('BITÁCORA', 'Cada cambio hecho desde aquí: quién, cuándo, antes, después y motivo', 'img/pdf.webp',
       function () { irA('bitacora'); }));
     if (tE.length) bloque('ECOSISTEMA', tE);

@@ -63,6 +63,7 @@
     LISTA_TRAMOS: ['catalogos', 'Tramos del contrato', 'lista'],
     CARPETAS_SECRETARIA: ['grupos', 'Carpeta de cada secretaría', 'mapaCarpetas'],
     DRIVE_HACIENDA: ['grupos', 'Drive de Hacienda (Supervisión)', 'json'],
+    GRUPO_CONTRATACION: ['grupos', 'Grupo de Contratación (cuentas que aprueba el supervisor y recordatorio de las revisadas)', 'grupo'],
     PLANTILLAS_ACTIVIDADES: ['plantillas', 'Actividades y evidencias según el número de obligaciones', 'tramosPlantilla'],
     MENSAJE_BIENVENIDA: ['mensajes', 'Mensaje de bienvenida', 'largo'],
     MENSAJE_ALTA: ['mensajes', 'Mensaje de alta y de contraseña reiniciada', 'largo'],
@@ -109,7 +110,9 @@
 
   /* Llaves que tienen su propia pantalla y no se pintan sueltas */
   var PROPIAS = ['FESTIVOS', 'FESTIVOS_AJUSTES', 'CORTES_POR_MES', 'CIERRE_VIGENCIA', 'MANTENIMIENTO', 'GRUPOS_SUPERVISOR',
-                 'PLANTILLAS', 'CANALES_POR_TIPO', 'SUPERVISION_ALCANCE', 'DECISION_USUARIOS'];
+                 'PLANTILLAS', 'CANALES_POR_TIPO', 'SUPERVISION_ALCANCE', 'DECISION_USUARIOS',
+                 /* 10.3 · tienen su propia vista: RECORDATORIOS */
+                 'RECORDATORIOS', 'NOTIFICACION_FINAL'];
   var DE_OTRA_APP = { RETENCIONES: 'Contabilidad y Tesorería', CUENTAS_CONTABLES: 'Contabilidad', CUENTA_BANCO_EGRESO: 'Tesorería', CONTABLE_REGLAS: 'Contabilidad',
                       CONTABLE_CATALOGO: 'Contabilidad', DESTINACIONES: 'Tesorería', EGRESO_FIRMANTES: 'Tesorería', EGRESO_REGLAS: 'Tesorería', EMBARGOS: 'Tesorería' };
 
@@ -120,9 +123,10 @@
     CONTRATO_NUEVO: 'Contrato nuevo', CLAVE_RECUPERADA: 'Contraseña recuperada', USUARIO_ALTA: 'Alta de usuario',
     CONTRATO_ADICION: 'Adición del contrato', CONTRATO_CESION: 'Cesión del contrato', CONTRATO_SUSPENSION: 'Suspensión del contrato',
     REQUERIMIENTO: 'Requerimiento de la oficina', CONTRATO_OTROSI: 'Otrosí del contrato', PLAN_POR_CORREGIR: 'Plan de pagos por corregir',
-    SOLICITUD_COMUNICACIONES: 'Solicitud a Comunicaciones'
+    SOLICITUD_COMUNICACIONES: 'Solicitud a Comunicaciones',
+    CONTRATO_NOTIFICADO: 'Notificación final (descargar la certificación)'
   };
-  var MARCADORES = '{nombre} {contrato} {informe} {estado} {valor} {observacion} {supervisor} {secretaria} {orden} {egreso} {fecha} {app} {clave} {codigo} {evento} {asignados}';
+  var MARCADORES = '{nombre} {contrato} {informe} {estado} {valor} {observacion} {supervisor} {secretaria} {orden} {egreso} {fecha} {app} {clave} {codigo} {evento} {asignados} {hasta}';
 
   var MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   var APPS_MANT = ['CONTRATISTA', 'CONTRATACION', 'SUPERVISION', 'CONTABILIDAD', 'TESORERIA', 'COMUNICACIONES'];
@@ -227,9 +231,10 @@
         var t = K.nodo('<article class="kit-tarjeta cf-item ad-llave ad-llave--propia"><div class="cf-item__cab"><b></b><code></code></div><p class="formulario__nota"></p></article>');
         t.querySelector('b').textContent = etiqueta(it.llave);
         t.querySelector('code').textContent = it.llave;
-        t.querySelector('p').textContent = s ? 'Tiene su propia pantalla en ' + (SECCIONES.filter(function (x) { return x.id === s; })[0] || {}).t + '.' : 'Se edita en USUARIOS Y ROLES (tarjeta de cada REVISOR).';
+        var rc = it.llave === 'RECORDATORIOS' || it.llave === 'NOTIFICACION_FINAL';
+        t.querySelector('p').textContent = rc ? 'Tiene su propia pantalla: RECORDATORIOS.' : (s ? 'Tiene su propia pantalla en ' + (SECCIONES.filter(function (x) { return x.id === s; })[0] || {}).t + '.' : 'Se edita en USUARIOS Y ROLES (tarjeta de cada REVISOR).');
         var ir = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('adelante', 14) + ' Ir</button>');
-        ir.addEventListener('click', function () { BUSCAR = ''; if (s) { SECCION = s; C.irA('configuracion/' + s); } else C.irA('usuarios'); });
+        ir.addEventListener('click', function () { BUSCAR = ''; if (rc) C.irA('recordatorios'); else if (s) { SECCION = s; C.irA('configuracion/' + s); } else C.irA('usuarios'); });
         t.appendChild(ir);
         g.appendChild(t);
       } else g.appendChild(tarjeta(it));

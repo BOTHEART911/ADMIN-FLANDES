@@ -381,7 +381,7 @@
             inp.addEventListener('change', marcar);
             l.appendChild(inp);
             if (c.k === 'DOCUMENTO' || c.k === 'CONTRATO') l.appendChild(K.nodo('<small class="campo__ayuda">Es parte de la llave (ID CONTRATO): si cambia, sus cuentas la acompañan.</small>'));
-            if (c.k === 'ESTADO') l.appendChild(K.nodo('<small class="campo__ayuda">ACTIVO o INACTIVO. Ojo: tu script automático también lo cambia.</small>'));
+            if (c.k === 'ESTADO') l.appendChild(K.nodo('<small class="campo__ayuda">ACTIVO, NOTIFICADO (última cuenta pagada: solo descarga la certificación) o INACTIVO. Ojo: la notificación final (RECORDATORIOS) también lo cambia.</small>'));
           }
           s.appendChild(l);
         });
