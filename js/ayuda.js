@@ -334,7 +334,147 @@
     };
   };
 
-  var TITULOS = { inicio: 'Tu inicio', atrasos: 'Cuentas atrasadas', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora', recordatorios: 'Recordatorios', soportes: 'Soportes',
+  /* ══════════════ 10.6 · comunicados, mi bot y tableros ══════════════ */
+
+  var APPS_C = { CONTRATISTA: 'Contratistas', CONTRATACION: 'Contratación', SUPERVISION: 'Supervisión', CONTABILIDAD: 'Contabilidad', TESORERIA: 'Tesorería', COMUNICACIONES: 'Comunicaciones' };
+  function CM() { return window.COMUNICADOS ? window.COMUNICADOS._datos() : null; }
+
+  GUIAS.comunicados = function () {
+    var d = CM();
+    var t = hola() + 'aquí publicas comunicados y escoges **a qué apps van**: cada app solo ve lo que le toca, y los teléfonos de esas apps reciben una notificación. ';
+    if (d) {
+      var pub = (d.lista || []).filter(function (c) { return c.estado === 'PUBLICADO'; }).length;
+      t += 'Hay **' + pub + '** publicados. ';
+    }
+    t += 'Lo que se publicó antes (y lo que publican las otras oficinas) sigue llegando a los contratistas, como siempre.';
+    return {
+      guia: t,
+      botones: [
+        { texto: '¿Cuántos teléfonos reciben avisos?', responde: function () {
+            var tp = (CM() || {}).telefonosPorApp || {};
+            var k = Object.keys(tp);
+            return k.length ? k.map(function (a) { return '· **' + (APPS_C[a] || a) + '**: ' + tp[a]; }).join('\n') + '\nSolo reciben la notificación los teléfonos que activaron los avisos en su app.' : 'Todavía no cargó la lista.';
+          } },
+        { texto: '¿Qué estoy viendo?', responde: function () {
+            var l = window.COMUNICADOS ? window.COMUNICADOS._filtradas() : [];
+            if (!l.length) return 'Ningún comunicado con estos filtros.';
+            var c = {};
+            l.forEach(function (x) { window.COMUNICADOS._destinos(x).forEach(function (a) { c[a] = (c[a] || 0) + 1; }); });
+            return '**' + l.length + '** comunicados. Por app: ' + Object.keys(c).map(function (a) { return (APPS_C[a] || a) + ' ' + c[a]; }).join(', ') + '.';
+          } },
+        { texto: '¿Cuál fue el último?', responde: function () {
+            var l = ((CM() || {}).lista || []).filter(function (x) { return x.estado === 'PUBLICADO'; });
+            if (!l.length) return 'No hay comunicados publicados.';
+            var x = l[0];
+            return '**' + nombre(x.emisor) + '** (' + (x.fecha || 'sin fecha') + '), para ' + window.COMUNICADOS._destinos(x).map(function (a) { return APPS_C[a] || a; }).join(', ') + ':\n' + String(x.texto || '(solo documentos)').slice(0, 220);
+          } }
+      ]
+    };
+  };
+
+  function MB() { return window.MIBOT ? window.MIBOT._datos() : null; }
+  GUIAS.mibot = function () {
+    var d = MB();
+    var t = hola() + 'este es el bot de WhatsApp de las siete apps. ';
+    if (d) {
+      var E = (window.MIBOT.ESTADOS[(d.estado || {}).status] || {}).t || 'desconocido';
+      t += 'Estado: **' + E + '**. ';
+      if (!d.llave) t += 'Para verlo y manejarlo pega la **llave de la cuenta** de BuilderBot (no la del proyecto). ';
+      if (d.silencio) t += '**Ojo: los avisos están silenciados** (ninguna app manda WhatsApp ni push). ';
+    }
+    t += 'Si se desconecta: **Generar QR** y escanéalo desde WhatsApp › Dispositivos vinculados.';
+    return {
+      guia: t,
+      botones: [
+        { texto: '¿Están saliendo los WhatsApp?', responde: function () {
+            var e = ((MB() || {}).envios || {}).dias7 || {};
+            if (!e.total) return 'En los últimos 7 días no se anotó ningún WhatsApp.';
+            return 'En 7 días: **' + e.total + '** WhatsApp — **' + (e.ok || 0) + '** salieron, **' + (e.fallos || 0) + '** no salieron' + (e.silenciados ? ', ' + e.silenciados + ' silenciados' : '') + '.';
+          } },
+        { texto: '¿Qué hago si el bot se cae?', responde: function () {
+            return '1. Toca **Reiniciar** y espera unos segundos.\n2. Si sigue caído, **Generar QR** y escanéalo con el teléfono del bot.\n3. Si el QR no sale, **Eliminar sesión** y vuelve a generar el QR.\nMientras tanto los avisos que tienen push igual le llegan al contratista por la app.';
+          } },
+        { texto: '¿Quién está bloqueado?', responde: function () {
+            var l = (((MB() || {}).listaNegra) || {}).numeros || [];
+            return l.length ? l.map(function (n) { return '· ' + n; }).join('\n') : 'Nadie está en la lista negra.';
+          } }
+      ]
+    };
+  };
+
+  function TB() { return window.TABLERO ? window.TABLERO._datos() : null; }
+  GUIAS.tablero = function () {
+    var d = TB(), g = d ? d.general || {} : {};
+    var t = hola() + 'el ecosistema de un vistazo. ';
+    if (d) t += 'Hay **' + (((g.contratos || {}).porEstado || {}).ACTIVO || 0) + '** contratos activos, **' + ((g.cuentas || {}).abiertas || 0) + '** cuentas en curso y se han girado **' + K.pesos((g.dinero || {}).total || 0) + '**. ';
+    t += 'Toca una cifra para ir a su vista. Se calcula cada 20 minutos; **Recalcular** trae lo de ahora.';
+    return {
+      guia: t,
+      botones: [
+        { texto: '¿Qué app está más lenta?', responde: function () {
+            var a = (((TB() || {}).general || {}).servidor || {}).apps || [];
+            if (!a.length) return 'Sin llamadas en los últimos 7 días.';
+            var l = a.slice().sort(function (x, y) { return (y.p90 || 0) - (x.p90 || 0); });
+            return listaCorta(l, function (x) { return '· **' + (APP_T[x.app] || x.app || 'Sin app') + '**: la típica ' + Math.round((x.mediana || 0) / 100) / 10 + ' s, 9 de 10 en ' + Math.round((x.p90 || 0) / 100) / 10 + ' s (' + x.llamadas + ' llamadas)'; }, 6);
+          } },
+        { texto: '¿Cuántos errores hubo?', responde: function () {
+            var e = ((TB() || {}).general || {}).errores || {};
+            var k = Object.keys(e.porApp || {});
+            return k.length ? '**' + e.total + '** errores en 7 días:\n' + k.map(function (a) { return '· ' + (APP_T[a] || a || 'Sin app') + ': ' + e.porApp[a]; }).join('\n') : 'Ningún error en 7 días. ✓';
+          } },
+        { texto: '¿Cuánto se giró este mes?', responde: function () {
+            var m = (((TB() || {}).general || {}).dinero || {}).porMes || [];
+            if (!m.length) return 'No hay pagos registrados.';
+            var u = m[m.length - 1];
+            return 'En **' + u.mes + '** se giraron **' + K.pesos(u.valor) + '** en ' + u.pagos + ' pagos.';
+          } }
+      ]
+    };
+  };
+
+  GUIAS.rendimiento = function () {
+    var d = TB();
+    var t = hola() + 'cuánto se demora cada paso de una cuenta, en **días hábiles**. ';
+    if (d && window.TABLERO) {
+      var s = window.TABLERO._stats((window.TABLERO._filtradas() || []).map(function (o) { return o.dTot; }).filter(function (x) { return x !== null && x !== undefined; }));
+      if (s.n) t += 'De punta a punta (reporte → pago) la cuenta típica tarda **' + s.med + '** días hábiles y 9 de cada 10 tardan **' + s.p90 + '** o menos. ';
+      if (!d._conTraza) t += 'Con los datos viejos la revisión del supervisor y la de Contratación salen juntas; desde producción se separan solas. ';
+    }
+    t += 'Filtra por fechas y por área; el PDF sale por bloques y el Excel trae cada cuenta.';
+    function porTramo(k) {
+      return function () {
+        var tr = (window.TABLERO.TRAMOS || []).filter(function (x) { return x.k === k; })[0];
+        var pp = window.TABLERO._porPersona(window.TABLERO._filtradas(), tr);
+        return pp.length ? listaCorta(pp, function (x) { return '· **' + nombre(x.quien) + '**: ' + x.med + ' días (mediana de ' + x.n + ')'; }, 8) : 'Sin datos en este rango.';
+      };
+    }
+    return {
+      guia: t,
+      botones: [
+        { texto: '¿Dónde se va el tiempo?', responde: function () {
+            var l = window.TABLERO._filtradas();
+            return (window.TABLERO._tramos() || []).filter(function (x) { return x.k !== 'dTot'; }).map(function (x) {
+              var s = window.TABLERO._stats(l.map(function (o) { return o[x.k]; }).filter(function (v) { return v !== null && v !== undefined; }));
+              return '· **' + x.t + '**: ' + (s.med === null ? '—' : s.med + ' días') + ' (9 de 10 en ' + (s.p90 === null ? '—' : s.p90) + ')';
+            }).join('\n');
+          } },
+        { texto: '¿Qué supervisión tarda más?', responde: function () {
+            var g = {};
+            window.TABLERO._filtradas().forEach(function (o) { if (o.dCie !== null && o.dCie !== undefined) (g[o.sup] = g[o.sup] || []).push(o.dCie + (o.dRev || 0)); });
+            var l = Object.keys(g).map(function (k) { return { k: k, s: window.TABLERO._stats(g[k]) }; }).sort(function (a, b) { return b.s.med - a.s.med; });
+            return l.length ? listaCorta(l, function (x) { return '· **' + nombre(x.k) + '**: ' + x.s.med + ' días de revisión + cierre (mediana de ' + x.s.n + ')'; }, 8) : 'Sin datos.';
+          } },
+        { texto: '¿Contabilidad por persona?', responde: porTramo('dCtb') },
+        { texto: '¿Tesorería por persona?', responde: porTramo('dEgr') },
+        { texto: '¿Cómo se cuentan los días?', responde: function () {
+            return 'Se cuentan los **días hábiles** entre un paso y el siguiente: sin sábados, domingos ni festivos (los de Configuración; en diciembre cuenta todo, como en la radicación). Si pasa el mismo día, cuenta **0**. ' +
+              'Las fechas salen de las hojas FIRMAS, APROBADAS, ORDENES, EGRESOS y PAGOS, y desde producción de la traza de cada cuenta.';
+          } }
+      ]
+    };
+  };
+
+  var TITULOS = { inicio: 'Tu inicio', comunicados: 'Comunicados', mibot: 'Mi bot', tablero: 'Tablero del ecosistema', rendimiento: 'Tablero de rendimiento', atrasos: 'Cuentas atrasadas', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora', recordatorios: 'Recordatorios', soportes: 'Soportes',
                   novedad: 'Novedades del contrato', datos: 'Todos los datos del contrato' };
   if (window.AYUDA_CONTRATOS) window.AYUDA_CONTRATOS.sumar(GUIAS, TITULOS);
 

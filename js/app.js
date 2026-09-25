@@ -22,6 +22,14 @@
        por bloques y Excel. Rehacer los documentos de una cuenta va en la
        ficha del contratista (contratos-admin.js) y queda aquí como soporte.
 
+   Vistas de la 10.6:
+     · COMUNICADOS (comunicados.js): publicar a las apps que se escojan,
+       ver y retirar los de todas las oficinas.
+     · MI BOT (mibot.js): el bot de WhatsApp (estado, QR, reiniciar, lista
+       negra, silenciar los avisos, prueba y últimos envíos).
+     · TABLERO y RENDIMIENTO (tablero.js): el ecosistema de un vistazo y los
+       tiempos de cada paso de una cuenta por supervisión, área y persona.
+
    Vista de la 10.3:
      · RECORDATORIOS (recordatorios.js): los dos scripts viejos
        (RECORDATORIO_CUENTAS y NOTIFICACION_FINAL) ya dentro del CORE,
@@ -61,7 +69,7 @@
   var ARRANQUE = null;    /* lo que trajo 'inicio' */
   var VERSIONES = {};     /* APP -> versión publicada (de su version.js) */
 
-  var MODULOS = ['CONFIG', 'USUARIOS', 'BITACORA', 'RECORDATORIOS', 'SOPORTES'];
+  var MODULOS = ['CONFIG', 'USUARIOS', 'BITACORA', 'RECORDATORIOS', 'SOPORTES', 'COMUNICADOS', 'MIBOT', 'TABLERO'];
 
   /* Las siete apps con la imagen que las representa en ALCALDIA-MEDIOS */
   var APPS = [
@@ -329,6 +337,11 @@
     soportes: function (sub) { window.SOPORTES.vista(sub); },
     /* 10.5 · cuentas atrasadas */
     atrasos: function () { window.ATRASOS.vista(); },
+    /* 10.6 · comunicados, mi bot y tableros */
+    comunicados: function () { window.COMUNICADOS.vista(); },
+    mibot: function () { window.MIBOT.vista(); },
+    tablero: function () { window.TABLERO.tablero(); },
+    rendimiento: function () { window.TABLERO.rendimiento(); },
     /* 10.2 · contratistas (las vistas de CONTRATACION) */
     contratistas: function (sub) { window.CONTRATISTAS.lista(sub); },
     contratista: function (sub) { window.CONTRATISTAS.detalle(sub); },
@@ -351,6 +364,10 @@
     recordatorios: 'RECORDATORIOS',
     soportes: 'SOPORTES',
     atrasos: 'CUENTAS ATRASADAS',
+    comunicados: 'COMUNICADOS',
+    mibot: 'MI BOT',
+    tablero: 'TABLERO DEL ECOSISTEMA',
+    rendimiento: 'TABLERO DE RENDIMIENTO',
     contratistas: 'CONTRATISTAS',
     contratista: 'DETALLES DEL CONTRATISTA',
     agregar: 'AGREGAR CONTRATISTA',
@@ -364,6 +381,7 @@
   };
 
   var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora', recordatorios: 'configuracion', soportes: 'soportes', atrasos: 'configuracion',
+    comunicados: 'comunicados', mibot: 'miBot', tablero: 'dashboard', rendimiento: 'dashboard',
     contratistas: 'contratistas', contratista: 'contratistas', agregar: 'agregarContratista', masiva: 'agregarContratista',
     adicion: 'adicion', cesion: 'cesion', suspension: 'suspension', editar: 'editarContratista',
     novedad: 'contratistas', datos: 'contratistas' };
@@ -440,6 +458,20 @@
     if (puede('bitacora')) tE.push(acc.bitacora = acceso('BITÁCORA', 'Cada cambio hecho desde aquí: quién, cuándo, antes, después y motivo', 'img/pdf.webp',
       function () { irA('bitacora'); }));
     if (tE.length) bloque('ECOSISTEMA', tE);
+
+    /* 10.6 · tableros, comunicados y el bot */
+    var tT = [];
+    if (puede('dashboard')) {
+      tT.push(accesoIcono('TABLERO DEL ECOSISTEMA', 'Contratos, cuentas por estado, lo girado, usuarios, soportes y la salud del servidor', 'grafica',
+        function () { irA('tablero'); }));
+      tT.push(accesoIcono('TABLERO DE RENDIMIENTO', 'Cuánto se demora cada paso de una cuenta: por supervisión, por área y por persona', 'velocimetro',
+        function () { irA('rendimiento'); }));
+    }
+    if (puede('comunicados')) tT.push(acc.comunicados = acceso('COMUNICADOS', 'Publica a las apps que escojas, con documentos y aviso a sus teléfonos', 'img/chat.webp',
+      function () { irA('comunicados'); }));
+    if (puede('miBot')) tT.push(acc.bot = acceso('MI BOT', 'El bot de WhatsApp: estado, QR, reiniciar, lista negra, silenciar los avisos y últimos envíos', 'img/whatsapp.webp',
+      function () { irA('mibot'); }));
+    if (tT.length) bloque('TABLEROS Y AVISOS', tT);
 
     /* 10.2 · contratistas: las mismas vistas de CONTRATACION + lo de ADMIN */
     var tC = [];
