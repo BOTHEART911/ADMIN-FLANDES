@@ -115,7 +115,7 @@
               var l = window.USUARIOS ? window.USUARIOS._filtradas() : [];
               var c = {};
               l.forEach(function (u) { String(u.rol || '').split(',').forEach(function (r) { r = r.trim(); if (r) c[r] = (c[r] || 0) + 1; }); });
-              return 'Estás viendo **' + l.length + '** usuarios' + (l.length ? ': ' + Object.keys(c).map(function (k) { return c[k] + ' ' + k; }).join(', ') : '') + '.';
+              return 'Estás viendo **' + l.length + '** ' + (l.length === 1 ? 'usuario' : 'usuarios') + (l.length ? ': ' + Object.keys(c).map(function (k) { return c[k] + ' ' + k; }).join(', ') : '') + '.';
             } },
           { texto: '¿Quién sigue con la contraseña del documento?', responde: function () {
               var l = activos().filter(function (u) { return u.claveEsDocumento; });
