@@ -54,6 +54,7 @@
   var CAT = {
     VIGENCIA: ['calendario', 'Vigencia (año)', 'numero'],
     SOLIDARIO_UMBRAL: ['calendario', 'Umbral del fondo de solidaridad pensional (IBC)', 'pesos'],
+    INGRESA_SIGUIENTE_DESDE: ['calendario', 'Desde qué estado de la cuenta anterior se puede ingresar la siguiente', 'umbralIngreso'],
     LISTA_BANCOS: ['catalogos', 'Bancos', 'lista'],
     LISTA_EPS: ['catalogos', 'EPS', 'lista'],
     LISTA_AFP: ['catalogos', 'Fondos de pensiones (AFP)', 'lista'],
@@ -67,7 +68,6 @@
     CARPETAS_SECRETARIA: ['grupos', 'Carpeta de cada secretaría', 'mapaCarpetas'],
     DRIVE_HACIENDA: ['grupos', 'Drive de Hacienda (Supervisión)', 'json'],
     GRUPO_CONTRATACION: ['grupos', 'Grupo de Contratación (cuentas que aprueba el supervisor y recordatorio de las revisadas)', 'grupo'],
-    PLANTILLAS_ACTIVIDADES: ['plantillas', 'Actividades y evidencias según el número de obligaciones', 'tramosPlantilla'],
     CARPETA_GUIAS: ['guias', 'Carpeta GUÍAS RÁPIDAS (Drive)', 'carpeta'],
     CARPETA_TUTORIALES: ['grupos', 'Carpeta TUTORIALES EN VIDEO (videos y portadas del contratista)', 'carpeta'],
     GUIA_CONTRATISTA: ['guias', 'Guía de Contratista', 'guia'],
@@ -354,6 +354,18 @@
       var r = pieGuardar(t, it.llave, function () { return s.value; }, function () { return s.value !== it.valor; });
       s.addEventListener('change', r);
     },
+    /* F11 · cuándo puede el contratista ingresar su cuenta siguiente. Solo
+       dos valores: el CORE rechaza cualquier otro. */
+    umbralIngreso: function (t, it) {
+      var s = K.nodo('<select class="op-select ad-in"></select>');
+      [['CERRADA', 'CERRADA (plan de pagos aceptado) · recomendado'], ['ORDEN DE PAGO', 'ORDEN DE PAGO (ya pasó por Contabilidad)']].forEach(function (o) {
+        var x = document.createElement('option'); x.value = o[0]; x.textContent = o[1]; if (o[0] === (it.valor || 'CERRADA')) x.selected = true; s.appendChild(x);
+      });
+      t.appendChild(s);
+      t.appendChild(K.nodo('<p class="formulario__nota">Cuando la cuenta anterior llega a este estado, el contratista ya puede ingresar la siguiente directamente desde INGRESAR CUENTA. Reportarla sigue pidiendo que la anterior esté CERRADA.</p>'));
+      var r = pieGuardar(t, it.llave, function () { return s.value; }, function () { return s.value !== it.valor; });
+      s.addEventListener('change', r);
+    },
     secreta: function (t, it) {
       t.appendChild(K.nodo('<p class="ad-secreta">' + K.icono('candado', 14) + ' Guardada: <code>' + K.esc(it.valor || '(vacía)') + '</code></p>'));
       campoTexto(t, it, { inicial: '', extra: function (inp) { inp.placeholder = 'Pega la llave nueva completa para reemplazarla'; inp.type = 'password'; inp.autocomplete = 'off'; return null; } });
@@ -372,8 +384,7 @@
     json: function (t, it) { editorJson(t, it); },
     mapaCarpetas: function (t, it) { editorMapa(t, it, { clave: 'Secretaría', valor: 'Carpeta (enlace o id)', carpeta: true }); },
     mapaApps: function (t, it) { editorMapa(t, it, { clave: 'App', valor: 'Dirección (https://…)', apps: true }); },
-    mapaSonidos: function (t, it) { editorMapa(t, it, { clave: 'Nombre', valor: 'Dirección del audio (https://…)', sonar: true }); },
-    tramosPlantilla: function (t, it) { editorTramos(t, it); }
+    mapaSonidos: function (t, it) { editorMapa(t, it, { clave: 'Nombre', valor: 'Dirección del audio (https://…)', sonar: true }); }
   };
 
   function interruptor(t, it, actual, aValor) {
@@ -495,33 +506,8 @@
     pintar();
   }
 
-  /* ── PLANTILLAS_ACTIVIDADES: [{hasta, actividades, evidencias}] ── */
-  function editorTramos(t, it) {
-    var orig = []; try { orig = JSON.parse(it.valor) || []; } catch (e) {}
-    var l = copia(orig);
-    var z = K.nodo('<div class="ad-mapa"></div>');
-    t.appendChild(z);
-    var r = pieGuardar(t, it.llave, function () {
-      l.forEach(function (x) { x.hasta = Number(x.hasta) || 0; x.actividades = idDe(x.actividades); x.evidencias = idDe(x.evidencias); if (!x.hasta || !x.actividades || !x.evidencias) throw new Error('Cada fila necesita hasta cuántas obligaciones y las dos plantillas.'); });
-      return JSON.stringify(l);
-    }, function () { return JSON.stringify(l) !== JSON.stringify(orig); });
-    l.forEach(function (x) {
-      var f = K.nodo('<div class="ad-tramo"><label class="op-campo"><span>Hasta (obligaciones)</span><input class="ad-in" inputmode="numeric" maxlength="3"></label>' +
-        '<label class="op-campo"><span>Actividades</span><input class="ad-in ad-a"></label><label class="op-campo"><span>Evidencias</span><input class="ad-in ad-e"></label>' +
-        '<span class="ad-mapa__acc"></span></div>');
-      var ih = f.querySelector('input'), ia = f.querySelector('.ad-a'), ie = f.querySelector('.ad-e'), acc = f.querySelector('.ad-mapa__acc');
-      ih.value = x.hasta; ia.value = x.actividades; ie.value = x.evidencias;
-      var irA = K.nodo('<a class="kit-btn kit-btn--plano ad-mini" target="_blank" rel="noopener">' + K.icono('documento', 14) + ' Actividades</a>');
-      var irE = K.nodo('<a class="kit-btn kit-btn--plano ad-mini" target="_blank" rel="noopener">' + K.icono('imagen', 14) + ' Evidencias</a>');
-      function poner() { irA.href = urlDrive(idDe(ia.value), false); irE.href = urlDrive(idDe(ie.value), false); }
-      poner();
-      acc.appendChild(irA); acc.appendChild(irE);
-      ih.addEventListener('input', function () { x.hasta = ih.value.replace(/\D/g, ''); ih.value = x.hasta; r(); });
-      ia.addEventListener('input', function () { x.actividades = ia.value.trim(); poner(); r(); });
-      ie.addEventListener('input', function () { x.evidencias = ie.value.trim(); poner(); r(); });
-      z.appendChild(f);
-    });
-  }
+  /* F11 · el editor de PLANTILLAS_ACTIVIDADES se retiró con la llave: el CORE
+     genera con PLANTILLA_ACTIVIDADES_n y PLANTILLA_EVIDENCIAS_n (sección Plantillas). */
 
   function copiar(texto) {
     var ok = function () { K.aviso('Copiado.', 'ok', 1800); };
