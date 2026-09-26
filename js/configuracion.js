@@ -67,7 +67,7 @@
     LISTA_TRAMOS: ['catalogos', 'Tramos del contrato', 'lista'],
     CARPETAS_SECRETARIA: ['grupos', 'Carpeta de cada secretaría', 'mapaCarpetas'],
     DRIVE_HACIENDA: ['grupos', 'Drive de Hacienda (Supervisión)', 'json'],
-    GRUPO_CONTRATACION: ['grupos', 'Grupo de Contratación (cuentas que aprueba el supervisor y recordatorio de las revisadas)', 'grupo'],
+    GRUPO_CONTRATACION: ['grupos', 'Grupo de Contratación (cuentas que aprueba el supervisor, recordatorio de las revisadas y solicitudes nuevas de los contratistas)', 'grupo'],
     CARPETA_GUIAS: ['guias', 'Carpeta GUÍAS RÁPIDAS (Drive)', 'carpeta'],
     CARPETA_TUTORIALES: ['grupos', 'Carpeta TUTORIALES EN VIDEO (videos y portadas del contratista)', 'carpeta'],
     GUIA_CONTRATISTA: ['guias', 'Guía de Contratista', 'guia'],
@@ -139,9 +139,13 @@
     CONTRATO_ADICION: 'Adición del contrato', CONTRATO_CESION: 'Cesión del contrato', CONTRATO_SUSPENSION: 'Suspensión del contrato',
     REQUERIMIENTO: 'Requerimiento de la oficina', CONTRATO_OTROSI: 'Otrosí del contrato', PLAN_POR_CORREGIR: 'Plan de pagos por corregir',
     SOLICITUD_COMUNICACIONES: 'Solicitud a Comunicaciones',
-    CONTRATO_NOTIFICADO: 'Notificación final (descargar la certificación)'
+    CONTRATO_NOTIFICADO: 'Notificación final (descargar la certificación)',
+    SOPORTE_RESUELTO: 'Soporte resuelto (calificar)', DOCUMENTOS_REHECHOS: 'Documentos de la cuenta rehechos', CUENTA_ATRASADA: 'Cuenta atrasada',
+    /* 26/09 · solicitudes a Contratación. La NUEVA es el mensaje al GRUPO de Contratación */
+    SOLICITUD_CONTRATACION_NUEVA: 'Solicitud a Contratación · aviso al grupo', SOLICITUD_CONTRATACION_RESPUESTA: 'Solicitud a Contratación · respuesta',
+    SOLICITUD_CONTRATACION_GESTION: 'Solicitud a Contratación · gestión registrada'
   };
-  var MARCADORES = '{nombre} {contrato} {informe} {estado} {valor} {observacion} {supervisor} {secretaria} {orden} {egreso} {fecha} {app} {clave} {codigo} {evento} {asignados} {hasta}';
+  var MARCADORES = '{nombre} {contrato} {informe} {estado} {valor} {observacion} {supervisor} {secretaria} {orden} {egreso} {fecha} {app} {clave} {codigo} {evento} {asignados} {hasta} {tipo} {documento} {telefono} {detalle} {solicitud} {respuesta} {gestion} {donde}';
 
   var MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   var APPS_MANT = ['CONTRATISTA', 'CONTRATACION', 'SUPERVISION', 'CONTABILIDAD', 'TESORERIA', 'COMUNICACIONES'];
