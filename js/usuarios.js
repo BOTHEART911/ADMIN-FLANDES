@@ -22,6 +22,13 @@
      · Bienvenida ('bienvenida'): el enlace de su app, su usuario y su
        contraseña por WhatsApp (o correo si no tiene celular); si no tiene
        ninguno, se comparte desde este teléfono.
+     · Documento (solo DEV, 26/09): cambia el documento de la persona en
+       TODAS las hojas del CORE. Primero 'documentoPrevia' (qué hojas y
+       cuántas filas, sin escribir) y, al confirmar, 'documentoCambiar' con
+       la huella de esa vista previa. Conserva historial, foto, firma y
+       contraseña.
+     · Una tarjeta cuyo documento lo tiene también OTRA persona en USUARIOS
+       sale marcada en rojo (atajo #/usuarios/DOC_REPETIDO).
 
    Filtros: #/usuarios/<APP> o los atajos del inicio
    (#/usuarios/BLOQUEADOS, SIN_CELULAR, SIN_CORREO, CLAVE_DOC).
@@ -43,7 +50,8 @@
     BLOQUEADOS: ['Bloqueados ahora', function (u) { return u.bloqueado; }],
     SIN_CELULAR: ['Activos sin celular', function (u) { return u.estado === 'ACTIVO' && !u.telefono; }],
     SIN_CORREO: ['Activos sin correo', function (u) { return u.estado === 'ACTIVO' && !u.correo; }],
-    CLAVE_DOC: ['Contraseña = documento', function (u) { return u.estado === 'ACTIVO' && u.claveEsDocumento; }]
+    CLAVE_DOC: ['Contraseña = documento', function (u) { return u.estado === 'ACTIVO' && u.claveEsDocumento; }],
+    DOC_REPETIDO: ['Documento repetido entre personas', function (u) { return !!otrasPersonas(u).length; }]
   };
 
   function O() { return window.OFICINA; }
@@ -55,6 +63,25 @@
   function multiple(app) { return (D().rolesMultiples || ['CONTRATACION']).indexOf(app) >= 0; }
   function rolesDeU(rol) { return String(rol || '').split(/[,+\/]/).map(function (x) { return K.norm(x); }).filter(Boolean); }
   function tiene(rol, uno) { return rolesDeU(rol).indexOf(uno) >= 0; }
+
+  /* 26/09 · misma regla del CORE (Admin107): dos nombres son la misma persona
+     si comparten una palabra de 3 letras o más */
+  function palabras(n) { return K.norm(n).split(' ').filter(function (w) { return w.length >= 3; }); }
+  function mismaPersona(a, b) {
+    var pa = palabras(a), pb = palabras(b);
+    if (!pa.length || !pb.length) return true;
+    return pa.some(function (w) { return pb.indexOf(w) >= 0; });
+  }
+  /** Los nombres de OTRAS personas que tienen el mismo documento que u. */
+  function otrasPersonas(u) {
+    var out = [];
+    lista().forEach(function (x) {
+      if (x === u || x.documento !== u.documento || mismaPersona(x.nombre, u.nombre)) return;
+      if (out.indexOf(x.nombre) < 0) out.push(x.nombre);
+    });
+    return out;
+  }
+  function esDev() { return !!(C.esDev && C.esDev()); }
 
   function filtradas() {
     var q = K.norm(F.buscar);
@@ -158,6 +185,8 @@
       if (u.app === 'SUPERVISION') li('persona', u.alcance ? (u.alcance.supervisor ? 'Revisa lo de ' + O().nombre(u.alcance.supervisor) : 'Revisa ' + O().titulo(u.alcance.secretaria)) : 'Sin supervisor ni secretaría asignada: no ve nada', u.alcance ? '' : 'ad-malo');
       li(u.decide ? 'check' : 'prohibido', u.decide ? 'Puede aprobar y devolver' : 'Solo visto bueno o inconsistencia (no aprueba ni devuelve)', '');
     }
+    var otras = otrasPersonas(u);
+    if (otras.length) li('aviso', 'Documento repetido: también es de ' + otras.map(function (n) { return O().nombre(n); }).join(', ') + '. Corrígelo con «Documento».', 'ad-malo');
     if (u.creado) li('reloj', 'Creado ' + u.creado + (u.creadoPor ? ' por ' + O().nombre(u.creadoPor) : ''), 'ad-apagado');
 
     var acc = t.querySelector('.ct-acc');
@@ -171,6 +200,7 @@
     if (u.estado === 'ACTIVO') boton('whatsapp', 'Bienvenida', function () { bienvenida(u); });
     boton('llave', 'Contraseña', function () { clave(u); });
     if (u.intentos) boton('candado', 'Desbloquear', function () { desbloquear(u); });
+    if (esDev()) boton('documento', 'Documento', function () { documento(u); });
     boton(u.estado === 'ACTIVO' ? 'prohibido' : 'check', u.estado === 'ACTIVO' ? 'Estado' : 'Activar', function () { estado(u); }, u.estado === 'ACTIVO' ? 'cf-quitar' : '');
     return t;
   }
@@ -210,7 +240,7 @@
       if (!multiple(sA.value)) return sR.value;
       return [].slice.call(zChk.querySelectorAll('input:checked')).map(function (i) { return i.value; }).join(',');
     }
-    var iD = campo('Documento *', '<input type="text" inputmode="numeric" maxlength="12">', nuevo ? 'Con el documento entra a la app.' : 'El documento y la app no se cambian: si están mal, desactiva este usuario y crea otro.');
+    var iD = campo('Documento *', '<input type="text" inputmode="numeric" maxlength="12">', nuevo ? 'Con el documento entra a la app.' : (esDev() ? 'El documento se cambia con el botón «Documento» de la tarjeta: lo cambia en todas las hojas.' : 'El documento y la app no se cambian: si están mal, desactiva este usuario y crea otro.'));
     iD.value = u.documento; iD.disabled = !nuevo;
     var iN = campo('Nombre completo *', '<input type="text" maxlength="120">'); iN.value = u.nombre;
     var iT = campo('Celular', '<input type="tel" inputmode="numeric" maxlength="10" placeholder="3XXXXXXXXX">', 'Ahí le llegan la bienvenida y la recuperación de la contraseña.'); iT.value = String(u.telefono || '').replace(/^57(?=3\d{9}$)/, '');   /* 25/09: las filas migradas traen el 57 delante y el formulario pide 10 dígitos */
@@ -359,6 +389,76 @@
     pedir('usuarioDesbloquear', { documento: u.documento, appDestino: u.app }, {
       titulo: 'Desbloqueando', sub: O().nombre(u.nombre), pasos: ['Borrando los intentos fallidos…'], listo: { titulo: 'Desbloqueado', paso: 'Ya puede entrar' }
     })['catch'](function (e) { K.aviso((e && e.message) || 'No se pudo.', 'malo', 7000); });
+  }
+
+  /* ══════════════ cambiar el documento (solo DEV) ══════════════ */
+
+  function documento(u) {
+    var f = K.nodo('<div class="formulario ad-form ad-doc">' +
+      '<p class="formulario__nota">Cambia <b>' + K.esc(u.documento) + '</b> en todas las hojas del CORE donde está (USUARIOS, dispositivos, avisos, soportes, bitácora, CONFIG…), no solo en esta tarjeta. Así conserva su historial, su foto, su firma y su contraseña.</p>' +
+      '<label class="campo"><span>Documento nuevo *</span><input type="text" inputmode="numeric" maxlength="10" autocomplete="off"></label>' +
+      '<label class="campo"><span>Motivo (queda en la bitácora)</span><input type="text" maxlength="300" placeholder="Opcional"></label>' +
+      '<div class="ad-doc__plan" aria-live="polite"></div></div>');
+    var ins = f.querySelectorAll('input'), iN = ins[0], iMo = ins[1], zP = f.querySelector('.ad-doc__plan');
+    var plan = null;
+    iN.addEventListener('input', function () {
+      iN.value = iN.value.replace(/\D/g, '');
+      if (plan && plan.nuevo !== iN.value) { plan = null; zP.innerHTML = ''; boton(); }
+    });
+    var m = O().modal({ titulo: 'Documento de ' + O().nombre(u.nombre), cuerpo: f,
+      botones: [{ texto: 'Cancelar', al: function () { m.cerrar(); } }, { texto: 'Ver qué se cambia', icono: 'buscar', marca: true, al: paso }] });
+
+    function boton() {
+      var b = m.botones[1];
+      if (!plan) { b.innerHTML = K.icono('buscar', 16) + ' Ver qué se cambia'; b.disabled = false; return; }
+      var n = plan.total;
+      b.innerHTML = K.icono('check', 16) + ' ' + (plan.modo === 'REPARAR' ? 'Reparar' : 'Cambiar') + ' en ' + n + (n === 1 ? ' lugar' : ' lugares');
+      b.disabled = !!plan.bloqueos.length || !n;
+    }
+
+    function pintar(p) {
+      plan = p;
+      zP.innerHTML = '';
+      var caja = K.nodo('<div class="kit-tarjeta ad-doc__caja"><p class="grupo__t"></p><ul class="ad-sup__datos ad-doc__hojas"></ul></div>');
+      caja.querySelector('.grupo__t').innerHTML = K.icono('documento', 14) + ' ' + K.esc(p.viejo) + ' → ' + K.esc(p.nuevo) +
+        (p.modo === 'REPARAR' ? ' <span class="ct-marca ad-est--suspendido">REPARAR</span>' : '');
+      var ul = caja.querySelector('ul');
+      function li(ic, txt, clase) { var e = K.nodo('<li' + (clase ? ' class="' + clase + '"' : '') + '>' + K.icono(ic, 13) + '<span></span></li>'); e.querySelector('span').textContent = txt; ul.appendChild(e); }
+      li('persona', O().nombre(p.persona.nombre) + ' · ' + p.persona.apps.map(function (a) { return (APP_T[a.app] || a.app) + ' (' + a.estado.toLowerCase() + ')'; }).join(', '));
+      p.hojas.forEach(function (h) { li('hoja', h.hoja + ' · ' + h.columna + ': ' + h.n + (h.n === 1 ? ' fila' : ' filas')); });
+      p.config.forEach(function (c) { li('herramienta', 'CONFIG · ' + c.llave + (c.n > 1 ? ' (' + c.n + ' veces)' : '')); });
+      if (!p.hojas.length && !p.config.length) li('check', 'No hay nada con el documento ' + p.viejo + '.', 'ad-apagado');
+      p.bloqueos.forEach(function (x) { li('prohibido', x, 'ad-malo'); });
+      p.avisos.forEach(function (x) { li('info', x, 'ad-doc__aviso'); });
+      zP.appendChild(caja);
+      boton();
+    }
+
+    function paso() {
+      var nuevo = iN.value.trim();
+      if (!/^\d{6,10}$/.test(nuevo)) { K.aviso('El documento nuevo va sin puntos y tiene de 6 a 10 dígitos.', 'aviso', 4000); return; }
+      if (nuevo === u.documento) { K.aviso('Es el mismo documento.', 'aviso', 3000); return; }
+      var b = m.botones[1];
+      b.disabled = true;
+      if (!plan) {
+        b.innerHTML = K.icono('reloj', 16) + ' Buscando en las hojas…';
+        K.pedir('documentoPrevia', { viejo: u.documento, nuevo: nuevo }, { ms: 90000 })
+          .then(pintar, function (e) { boton(); K.aviso((e && e.message) || 'No se pudo revisar.', 'malo', 8000); });
+        return;
+      }
+      var p = plan;
+      pedir('documentoCambiar', { viejo: p.viejo, nuevo: p.nuevo, huella: p.huella, motivo: iMo.value.trim() }, {
+        titulo: p.modo === 'REPARAR' ? 'Reparando el documento' : 'Cambiando el documento', sub: O().nombre(p.persona.nombre) + ' · ' + p.viejo + ' → ' + p.nuevo,
+        pasos: ['Comprobando que nada cambió…', 'Cambiando en ' + p.total + (p.total === 1 ? ' lugar…' : ' lugares…'), 'Cerrando sus sesiones viejas…', 'Apuntando en la bitácora…'],
+        listo: { titulo: 'Documento al día', paso: 'Entra con el ' + p.nuevo + ' y su misma contraseña' }
+      }).then(function (r) {
+        m.cerrar();
+        K.aviso('Listo: ' + r.celdas + (r.celdas === 1 ? ' lugar' : ' lugares') + ' con el ' + r.nuevo + '.', 'ok', 5000);
+      }, function (e) {
+        if (e && e.codigo === 'HUELLA' && e.datos) { pintar(e.datos); K.aviso(e.message, 'aviso', 8000); return; }
+        boton(); K.aviso((e && e.message) || 'No se pudo cambiar.', 'malo', 9000);
+      });
+    }
   }
 
   function estado(u) {

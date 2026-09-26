@@ -3369,3 +3369,9 @@ button.so-per:hover { border-color: var(--k-marca); background: rgba(var(--k-mar
 .ad-roles { display: flex; flex-direction: column; gap: 8px; }
 .ad-roles:empty { display: none; }
 .ad-roles .campo__ayuda { margin: 2px 0 0; }
+
+/* 26/09 · cambiar el documento de un usuario (solo DEV) */
+.ad-doc__caja { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.ad-doc__hojas li { align-items: flex-start; }
+.ad-doc__hojas li span { overflow-wrap: anywhere; }
+.ad-doc__aviso { color: var(--k-aviso); }
