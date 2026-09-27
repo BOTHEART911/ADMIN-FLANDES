@@ -127,7 +127,9 @@
                  /* 10.3 · tienen su propia vista: RECORDATORIOS */
                  'RECORDATORIOS', 'NOTIFICACION_FINAL',
                  /* ajuste 4 · el interruptor vive en su vista: TUTORIALES EN VIDEO (no deja encender sin videos) */
-                 'TUTORIALES_ACTIVO'];
+                 'TUTORIALES_ACTIVO',
+                 /* 27/09 · alerta de bot desconectado: su tarjeta vive en MENSAJES Y AVISOS */
+                 'ALERTA_BOT'];
   var DE_OTRA_APP = { RETENCIONES: 'Contabilidad y Tesorería', CUENTAS_CONTABLES: 'Contabilidad', CUENTA_BANCO_EGRESO: 'Tesorería', CONTABLE_REGLAS: 'Contabilidad',
                       CONTABLE_CATALOGO: 'Contabilidad', DESTINACIONES: 'Tesorería', EGRESO_FIRMANTES: 'Tesorería', EGRESO_REGLAS: 'Tesorería', EMBARGOS: 'Tesorería' };
 
@@ -143,8 +145,13 @@
     SOPORTE_RESUELTO: 'Soporte resuelto (calificar)', DOCUMENTOS_REHECHOS: 'Documentos de la cuenta rehechos', CUENTA_ATRASADA: 'Cuenta atrasada',
     /* 26/09 · solicitudes a Contratación. La NUEVA es el mensaje al GRUPO de Contratación */
     SOLICITUD_CONTRATACION_NUEVA: 'Solicitud a Contratación · aviso al grupo', SOLICITUD_CONTRATACION_RESPUESTA: 'Solicitud a Contratación · respuesta',
-    SOLICITUD_CONTRATACION_GESTION: 'Solicitud a Contratación · gestión registrada'
+    SOLICITUD_CONTRATACION_GESTION: 'Solicitud a Contratación · gestión registrada',
+    /* 27/09 · correos de alerta del bot (van a los 3 correos de ALERTA BOT DESCONECTADO) */
+    BOT_DESCONECTADO: 'Bot desconectado · correo de alerta', BOT_RECONECTADO: 'Bot reconectado · correo de alerta'
   };
+  /* Los avisos del bot son solo correo y tienen sus propios marcadores */
+  function esAvisoBot(t) { return t === 'BOT_DESCONECTADO' || t === 'BOT_RECONECTADO'; }
+  var MARCADORES_BOT = '{estado} {fecha} {desde} {duracion} {detalle} {enlace} {proyecto}';
   var MARCADORES = '{nombre} {contrato} {informe} {estado} {valor} {observacion} {supervisor} {secretaria} {orden} {egreso} {fecha} {app} {clave} {codigo} {evento} {asignados} {hasta} {tipo} {documento} {telefono} {detalle} {solicitud} {respuesta} {gestion} {donde}';
 
   var MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -220,7 +227,7 @@
       zona.appendChild(K.nodo('<p class="formulario__nota ad-sec-nota">' + K.icono(s.icono, 15) + ' ' + K.esc(s.p) + '</p>'));
       if (SECCION === 'calendario') { zona.appendChild(bloqueFestivos()); zona.appendChild(bloqueCortes()); zona.appendChild(bloqueCierre()); }
       if (SECCION === 'supervisores') zona.appendChild(bloqueSupervisores());
-      if (SECCION === 'mensajes') zona.appendChild(bloqueAvisos());
+      if (SECCION === 'mensajes') { zona.appendChild(bloqueAlertaBot()); zona.appendChild(bloqueAvisos()); }
       if (SECCION === 'mantenimiento') { zona.appendChild(bloqueMantenimiento()); }
       var llaves = cfg().filter(function (it) { return seccionDe(it.llave) === SECCION; });
       if (SECCION === 'catalogos') llaves.sort(function (a, b) { return (a.bloqueada ? 1 : 0) - (b.bloqueada ? 1 : 0); });
@@ -246,7 +253,7 @@
     l.forEach(function (it) {
       if (PROPIAS.indexOf(it.llave) >= 0) {
         var s = { FESTIVOS: 'calendario', FESTIVOS_AJUSTES: 'calendario', CORTES_POR_MES: 'calendario', CIERRE_VIGENCIA: 'calendario', MANTENIMIENTO: 'mantenimiento',
-                  GRUPOS_SUPERVISOR: 'supervisores', PLANTILLAS: 'mensajes', CANALES_POR_TIPO: 'mensajes' }[it.llave];
+                  GRUPOS_SUPERVISOR: 'supervisores', PLANTILLAS: 'mensajes', CANALES_POR_TIPO: 'mensajes', ALERTA_BOT: 'mensajes' }[it.llave];
         var t = K.nodo('<article class="kit-tarjeta cf-item ad-llave ad-llave--propia"><div class="cf-item__cab"><b></b><code></code></div><p class="formulario__nota"></p></article>');
         t.querySelector('b').textContent = etiqueta(it.llave);
         t.querySelector('code').textContent = it.llave;
@@ -819,6 +826,104 @@
 
   /* ══════════════ MENSAJES Y AVISOS ══════════════ */
 
+  /* ══════════════ ALERTA DE BOT DESCONECTADO (27/09) ══════════════
+     Como en SEP-GROUP: el CORE mira el bot cada hora (con el reloj de la
+     cola de correo) y manda UN correo a estos destinatarios cuando se cae y
+     otro cuando vuelve. Los textos son los avisos BOT_DESCONECTADO y
+     BOT_RECONECTADO de la lista de abajo. Un viaje por botón. */
+
+  var ESTADO_BOT = {
+    CONECTADO: { t: 'Bot conectado', tono: 'ok' },
+    CAIDO: { t: 'Bot desconectado', tono: 'malo' },
+    DESCONOCIDO: { t: 'Aún sin revisar', tono: 'aviso' }
+  };
+
+  function bloqueAlertaBot() {
+    var a = D().botAlerta || { activo: true, correos: ['', '', ''], estado: 'DESCONOCIDO', historial: [], llave: false };
+    var s = seccion('whatsapp', 'ALERTA DE BOT DESCONECTADO',
+      'El sistema revisa el bot de WhatsApp <b>cada hora</b>. Si se desconecta manda <b>un correo</b> a estos destinatarios, y <b>otro</b> cuando vuelve a conectarse. ' +
+      'Los textos de los dos correos se editan abajo, en <b>Bot desconectado</b> y <b>Bot reconectado</b>.');
+    s.classList.add('ad-botalerta');
+    if (a.estado === 'CAIDO') s.classList.add('ad-bloque--alerta');
+
+    var E = ESTADO_BOT[a.estado] || ESTADO_BOT.DESCONOCIDO;
+    var est = K.nodo('<div class="bt-estado bt-estado--' + E.tono + ' ad-botalerta__estado"><span class="bt-estado__luz" aria-hidden="true"></span>' +
+      '<div><h4 class="bt-estado__t"></h4><p class="bt-estado__p"></p><p class="bt-estado__s"></p></div></div>');
+    est.querySelector('.bt-estado__t').textContent = E.t + (a.statusTexto && a.estado !== 'DESCONOCIDO' ? ' · ' + a.statusTexto : '');
+    est.querySelector('.bt-estado__p').textContent = a.estado === 'CAIDO'
+      ? 'Desde ' + (a.desde || '—') + (a.avisado ? ' · correo enviado' : ' · el correo aún no ha salido')
+      : (a.ultimoChequeo ? 'Última revisión: ' + a.ultimoChequeo : 'Toca “Revisar ahora” para consultarlo ya.');
+    est.querySelector('.bt-estado__s').textContent = a.ultimoCorreo ? 'Último correo de alerta: ' + a.ultimoCorreo : '';
+    s.appendChild(est);
+    if (!a.llave) s.appendChild(K.nodo('<p class="ad-alerta ad-alerta--malo">' + K.icono('llave', 16) +
+      '<span>Falta la <b>llave de la cuenta</b> de BuilderBot: sin ella no se puede saber si el bot está caído. Pégala en <b>MI BOT</b>.</span></p>'));
+    if (a.error) { var er = K.nodo('<p class="ad-alerta ad-alerta--malo">' + K.icono('aviso', 16) + '<span></span></p>'); er.querySelector('span').textContent = a.error; s.appendChild(er); }
+
+    var sw = K.nodo('<label class="op-check cf-sw ad-sw"><input type="checkbox"><span></span></label>');
+    var iA = sw.querySelector('input'); iA.checked = a.activo !== false;
+    function textoSw() { sw.querySelector('span').innerHTML = iA.checked ? '<b>Alerta encendida</b>' : 'Alerta apagada: no se revisa el bot ni sale correo'; }
+    iA.addEventListener('change', textoSw); textoSw();
+    s.appendChild(sw);
+
+    var f = K.nodo('<div class="formulario ad-form ad-botalerta__correos"></div>');
+    var ins = [0, 1, 2].map(function (i) {
+      var l = K.nodo('<label class="campo"><span>' + (i === 0 ? 'Correo 1 (obligatorio)' : 'Correo ' + (i + 1) + ' (opcional)') + '</span>' +
+        '<input type="email" inputmode="email" autocomplete="off" maxlength="120" placeholder="' + (i === 0 ? 'nombre@dominio.com' : 'Opcional') + '"></label>');
+      var inp = l.querySelector('input'); inp.value = (a.correos || [])[i] || '';
+      f.appendChild(l);
+      return inp;
+    });
+    var lm = K.nodo('<label class="campo"><span>Motivo del cambio (queda en la bitácora)</span><input type="text" maxlength="300" placeholder="Opcional"></label>');
+    var iMo = lm.querySelector('input'); f.appendChild(lm);
+    s.appendChild(f);
+
+    var bt = K.nodo('<div class="ad-acciones ad-botalerta__acciones"></div>');
+    function boton(txt, ico, marca) { var b = K.nodo('<button type="button" class="kit-btn ' + (marca ? 'kit-btn--marca' : 'kit-btn--plano') + '">' + K.icono(ico, 15) + ' ' + K.esc(txt) + '</button>'); bt.appendChild(b); return b; }
+    var bG = boton('Guardar', 'check', true), bP = boton('Enviar correo de prueba', 'enviar'), bR = boton('Revisar ahora', 'recargar');
+    s.appendChild(bt);
+
+    if (a.historial && a.historial.length) {
+      var h = K.nodo('<ul class="ad-botalerta__hist"></ul>');
+      a.historial.forEach(function (x) { var li = K.nodo('<li><b></b> <span></span></li>'); li.querySelector('b').textContent = x.fecha; li.querySelector('span').textContent = x.texto; h.appendChild(li); });
+      s.appendChild(K.nodo('<p class="formulario__nota formulario__nota--fuerte">Últimos eventos</p>'));
+      s.appendChild(h);
+    }
+
+    function recibir(r) {
+      if (r && r.botAlerta) D().botAlerta = r.botAlerta;
+      if (r && r.bitacora) C.bitacora(r.bitacora);
+      if (vista._repintar) vista._repintar();
+    }
+    function correos() { return ins.map(function (i) { return i.value.trim(); }); }
+    bG.addEventListener('click', function () {
+      var c = correos();
+      if (!c[0]) { K.aviso('El correo 1 es obligatorio.', 'aviso', 3500); ins[0].focus(); return; }
+      for (var i = 0; i < 3; i++) if (c[i] && !/^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]{2,}$/.test(c[i])) { K.aviso('El correo ' + (i + 1) + ' no tiene forma de correo.', 'aviso', 4000); ins[i].focus(); return; }
+      bG.disabled = true;
+      K.piezas.guardado.mientras(K.pedir('botAlertaGuardar', { activo: iA.checked, correos: c, motivo: iMo.value.trim() }, { ms: 60000 }), {
+        titulo: 'Guardando la alerta del bot', sub: c.filter(Boolean).join(' · '), pasos: ['Comprobando los correos…', 'Guardando en CONFIG…'], listo: { titulo: 'Alerta al día', paso: 'Queda en la bitácora' }
+      }).then(recibir, function (e) { bG.disabled = false; K.aviso((e && e.message) || 'No se pudo guardar.', 'malo', 7000); });
+    });
+    bP.addEventListener('click', function () {
+      if (!(a.correos || [])[0]) { K.aviso('Guarda primero el correo 1.', 'aviso', 3500); return; }
+      K.piezas.confirmar.preguntar({ titulo: 'Correo de prueba', texto: 'Sale de verdad a ' + (a.correos || []).filter(Boolean).join(', ') + ', marcado [PRUEBA], con el texto de “Bot desconectado”. Gasta ' + (a.correos || []).filter(Boolean).length + ' de la cuota diaria de correo.', si: 'Enviar' })
+        .then(function (si) {
+          if (!si) return;
+          bP.disabled = true;
+          K.piezas.guardado.mientras(K.pedir('botAlertaProbar', { tipo: 'BOT_DESCONECTADO' }, { ms: 60000 }), {
+            titulo: 'Enviando el correo de prueba', sub: 'Bot desconectado', pasos: ['Armando el correo…', 'Enviando…'], listo: { titulo: 'Correo enviado', paso: 'Revisa la bandeja de entrada' }
+          }).then(function (r) { recibir(r); if (r && r.hecho) K.aviso(r.hecho, 'ok', 5000); }, function (e) { bP.disabled = false; K.aviso((e && e.message) || 'No se pudo enviar.', 'malo', 7000); });
+        });
+    });
+    bR.addEventListener('click', function () {
+      bR.disabled = true;
+      K.piezas.guardado.mientras(K.pedir('botAlertaRevisar', {}, { ms: 60000 }), {
+        titulo: 'Revisando el bot', sub: 'BuilderBot', pasos: ['Consultando el estado…'], listo: { titulo: 'Revisado', paso: '' }
+      }).then(recibir, function (e) { bR.disabled = false; K.aviso((e && e.message) || 'No se pudo revisar.', 'malo', 7000); });
+    });
+    return s;
+  }
+
   function bloqueAvisos() {
     var a = D().avisos || { tipos: [], plantillas: {}, canales: {} };
     var s = seccion('campana', 'AVISOS DEL ECOSISTEMA (' + a.tipos.length + ')',
@@ -840,15 +945,18 @@
   function editarAviso(tipo) {
     var a = D().avisos, p = copia(a.plantillas[tipo] || {}), c = (a.canales[tipo] || []).slice();
     p.push = p.push || {};
+    var bot = esAvisoBot(tipo);
+    if (bot) c = ['CORREO'];
     var f = K.nodo('<div class="formulario ad-form"></div>');
-    f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(MARCADORES) + '</code>. El que no venga en el aviso se borra solo.</p>'));
+    f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(bot ? MARCADORES_BOT : MARCADORES) + '</code>. El que no venga en el aviso se borra solo.' +
+      (bot ? ' Este aviso sale <b>solo por correo</b> a los correos de la tarjeta <b>ALERTA DE BOT DESCONECTADO</b> (arriba).' : '') + '</p>'));
     var can = K.nodo('<div class="cf-chips"></div>');
     ['PUSH', 'WHATSAPP', 'CORREO'].forEach(function (x) {
       var b = K.nodo('<button type="button" class="kit-pastilla" aria-pressed="' + (c.indexOf(x) >= 0) + '">' + K.icono(x === 'PUSH' ? 'campana' : (x === 'CORREO' ? 'sobre' : 'whatsapp'), 13) + ' ' + x + '</button>');
       b.addEventListener('click', function () { var i = c.indexOf(x); if (i >= 0) c.splice(i, 1); else c.push(x); b.setAttribute('aria-pressed', c.indexOf(x) >= 0); });
       can.appendChild(b);
     });
-    var lc = K.nodo('<div class="campo"><span>Canales por los que sale</span></div>'); lc.appendChild(can); f.appendChild(lc);
+    var lc = K.nodo('<div class="campo"><span>Canales por los que sale</span></div>'); lc.appendChild(can); if (!bot) f.appendChild(lc);
     function campo(et, val, largo, max) {
       var l = K.nodo('<label class="campo"><span>' + K.esc(et) + '</span>' + (largo ? '<textarea rows="4"></textarea>' : '<input type="text">') + '<small class="ad-cuenta"></small></label>');
       var i = l.querySelector(largo ? 'textarea' : 'input');
@@ -860,15 +968,16 @@
       f.appendChild(l);
       return i;
     }
-    var iPT = campo('Push · título', p.push.titulo, false, 65);
-    var iPC = campo('Push · cuerpo', p.push.cuerpo, true, 240);
-    var iWA = campo('WhatsApp', p.wa, true, 2000);
+    var iPT = bot ? null : campo('Push · título', p.push.titulo, false, 65);
+    var iPC = bot ? null : campo('Push · cuerpo', p.push.cuerpo, true, 240);
+    var iWA = bot ? null : campo('WhatsApp', p.wa, true, 2000);
     var iAs = campo('Correo · asunto', p.asunto, false, 150);
     var iCo = campo('Correo · cuerpo', p.correo, true, 4000);
     var iMo = campo('Motivo del cambio (queda en la bitácora)', '', false, 300);
     var m = O().modal({ titulo: TIPOS_AVISO[tipo] || tipo, cuerpo: f, ancha: true,
       botones: [{ texto: 'Cancelar', al: function () { m.cerrar(); } }, { texto: 'Guardar', icono: 'check', marca: true, al: guardar }] });
     function guardar() {
+      if (bot && (!iAs.value.trim() || !iCo.value.trim())) { K.aviso('El correo de alerta necesita asunto y cuerpo.', 'aviso', 4000); return; }
       if (!c.length) {
         K.piezas.confirmar.preguntar({ titulo: 'Sin canales', texto: 'Este aviso no va a salir por ningún lado. ¿Lo dejas así?', si: 'Sí, dejarlo apagado', peligro: true })
           .then(function (si) { if (si) enviar(); });
@@ -878,7 +987,9 @@
     }
     function enviar() {
       m.botones[1].disabled = true;
-      K.piezas.guardado.mientras(K.pedir('avisoGuardar', { tipo: tipo, pushTitulo: iPT.value, pushCuerpo: iPC.value, wa: iWA.value, asunto: iAs.value, correo: iCo.value, canales: c, motivo: iMo.value.trim() }, { ms: 60000 }), {
+      var dat = { tipo: tipo, asunto: iAs.value, correo: iCo.value, canales: c, motivo: iMo.value.trim() };
+      if (!bot) { dat.pushTitulo = iPT.value; dat.pushCuerpo = iPC.value; dat.wa = iWA.value; }
+      K.piezas.guardado.mientras(K.pedir('avisoGuardar', dat, { ms: 60000 }), {
         titulo: 'Guardando el aviso', sub: TIPOS_AVISO[tipo] || tipo, pasos: ['Guardando el texto…', 'Guardando los canales…'], listo: { titulo: 'Aviso al día', paso: 'Queda en la bitácora' }
       }).then(function (r) {
         C.aviso(r.tipo, r.plantilla, r.canales); C.bitacora(r.bitacora);

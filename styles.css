@@ -3375,3 +3375,14 @@ button.so-per:hover { border-color: var(--k-marca); background: rgba(var(--k-mar
 .ad-doc__hojas li { align-items: flex-start; }
 .ad-doc__hojas li span { overflow-wrap: anywhere; }
 .ad-doc__aviso { color: var(--k-aviso); }
+
+/* 27/09 · ALERTA DE BOT DESCONECTADO (Configuración › Mensajes y avisos) */
+.ad-botalerta__estado { margin: 4px 0 12px; border-radius: var(--k-r-md); background: var(--k-papel-2); }
+.ad-botalerta__estado .bt-estado__t { font-size: 1rem; }
+.ad-botalerta .ad-alerta { margin: 0 0 10px; }
+.ad-botalerta__correos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 14px; margin-top: 10px; }
+.ad-botalerta__correos input { width: 100%; }
+.ad-botalerta__acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ad-botalerta__hist { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; font: 500 .8rem/1.35 var(--k-fuente); color: var(--k-tinta-2); }
+.ad-botalerta__hist b { font-weight: 700; color: var(--k-tinta); }
+.ad-botalerta__correos > label:last-child { grid-column: 1 / -1; }
