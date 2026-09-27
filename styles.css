@@ -3386,3 +3386,22 @@ button.so-per:hover { border-color: var(--k-marca); background: rgba(var(--k-mar
 .ad-botalerta__hist { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; font: 500 .8rem/1.35 var(--k-fuente); color: var(--k-tinta-2); }
 .ad-botalerta__hist b { font-weight: 700; color: var(--k-tinta); }
 .ad-botalerta__correos > label:last-child { grid-column: 1 / -1; }
+
+/* ============================================================
+   27/09/2026 · CIERRE DE LA VIGENCIA (Configuración › Calendario)
+   ============================================================ */
+.ad-cierre { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.ad-cierre-res { display: grid; gap: 10px; }
+.ad-cierre-res:empty { display: none; }
+.ad-cierre-tabla { display: grid; border: 1px solid var(--k-linea); border-radius: 12px; overflow: hidden; font-size: .82rem; }
+.ad-cierre-f { display: grid; grid-template-columns: minmax(120px, 1.2fr) 70px 80px 2.4fr; gap: 8px; padding: 7px 10px; border-top: 1px solid var(--k-linea); align-items: center; }
+.ad-cierre-f:first-child { border-top: 0; }
+.ad-cierre-f--cab { font-weight: 700; background: var(--k-suave, rgba(0,0,0,.04)); }
+.ad-cierre-f span:nth-child(2), .ad-cierre-f span:nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; }
+.ad-cierre-f--nada { color: var(--k-apagado); }
+.ad-cierre-arch { padding: 12px 14px; }
+.ad-cierre-log { margin: 6px 0 0; padding-left: 18px; font-size: .8rem; color: var(--k-apagado); display: grid; gap: 2px; }
+@media (max-width: 560px) {
+  .ad-cierre-f { grid-template-columns: 1fr 56px 64px; }
+  .ad-cierre-f span:nth-child(4) { grid-column: 1 / -1; font-size: .76rem; color: var(--k-apagado); }
+}

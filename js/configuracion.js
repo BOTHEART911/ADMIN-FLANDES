@@ -122,7 +122,7 @@
   };
 
   /* Llaves que tienen su propia pantalla y no se pintan sueltas */
-  var PROPIAS = ['FESTIVOS', 'FESTIVOS_AJUSTES', 'CORTES_POR_MES', 'CIERRE_VIGENCIA', 'MANTENIMIENTO', 'GRUPOS_SUPERVISOR',
+  var PROPIAS = ['FESTIVOS', 'FESTIVOS_AJUSTES', 'CORTES_POR_MES', 'CIERRE_VIGENCIA', 'CIERRE_PLAN', 'MANTENIMIENTO', 'GRUPOS_SUPERVISOR',
                  'PLANTILLAS', 'CANALES_POR_TIPO', 'SUPERVISION_ALCANCE', 'DECISION_USUARIOS',
                  /* 10.3 · tienen su propia vista: RECORDATORIOS */
                  'RECORDATORIOS', 'NOTIFICACION_FINAL',
@@ -225,7 +225,7 @@
       if (BUSCAR) { pintarBusqueda(zona); return; }
       var s = SECCIONES.filter(function (x) { return x.id === SECCION; })[0] || SECCIONES[0];
       zona.appendChild(K.nodo('<p class="formulario__nota ad-sec-nota">' + K.icono(s.icono, 15) + ' ' + K.esc(s.p) + '</p>'));
-      if (SECCION === 'calendario') { zona.appendChild(bloqueFestivos()); zona.appendChild(bloqueCortes()); zona.appendChild(bloqueCierre()); }
+      if (SECCION === 'calendario') { zona.appendChild(bloqueFestivos()); zona.appendChild(bloqueCortes()); zona.appendChild(bloqueCierre()); zona.appendChild(bloquePlanCierre()); }
       if (SECCION === 'supervisores') zona.appendChild(bloqueSupervisores());
       if (SECCION === 'mensajes') { zona.appendChild(bloqueAlertaBot()); zona.appendChild(bloqueAvisos()); }
       if (SECCION === 'mantenimiento') { zona.appendChild(bloqueMantenimiento()); }
@@ -252,7 +252,7 @@
     var g = K.nodo('<div class="ad-llaves"></div>');
     l.forEach(function (it) {
       if (PROPIAS.indexOf(it.llave) >= 0) {
-        var s = { FESTIVOS: 'calendario', FESTIVOS_AJUSTES: 'calendario', CORTES_POR_MES: 'calendario', CIERRE_VIGENCIA: 'calendario', MANTENIMIENTO: 'mantenimiento',
+        var s = { FESTIVOS: 'calendario', FESTIVOS_AJUSTES: 'calendario', CORTES_POR_MES: 'calendario', CIERRE_VIGENCIA: 'calendario', CIERRE_PLAN: 'calendario', MANTENIMIENTO: 'mantenimiento',
                   GRUPOS_SUPERVISOR: 'supervisores', PLANTILLAS: 'mensajes', CANALES_POR_TIPO: 'mensajes', ALERTA_BOT: 'mensajes' }[it.llave];
         var t = K.nodo('<article class="kit-tarjeta cf-item ad-llave ad-llave--propia"><div class="cf-item__cab"><b></b><code></code></div><p class="formulario__nota"></p></article>');
         t.querySelector('b').textContent = etiqueta(it.llave);
@@ -625,7 +625,7 @@
     var orig = valorJson('CORTES_POR_MES', {}) || {};
     var v = copia(orig);
     var s = seccion('reloj', 'DÍA DE CORTE DE CADA MES',
-      'Desde ese día del mes, la radicación ya no ofrece fechas del mes en curso sino los <b>dos primeros días hábiles del mes siguiente</b>, para que la cuenta no se venza antes de llegar a Contabilidad. Déjalo vacío para no tener corte ese mes.');
+      'Desde ese día del mes, la radicación ya no ofrece fechas del mes en curso sino los <b>dos primeros días hábiles del mes siguiente</b>, para que la cuenta no se venza antes de llegar a Contabilidad. <b>En diciembre no salta</b>: se sigue ofreciendo diciembre hasta el cierre de la vigencia, y nunca un día del año siguiente. Déjalo vacío para no tener corte ese mes.');
     var g = K.nodo('<div class="ad-meses"></div>');
     MESES.forEach(function (m, i) {
       var l = K.nodo('<label class="op-campo ad-mes"><span></span><input class="ad-in" inputmode="numeric" maxlength="2" placeholder="—"></label>');
@@ -669,6 +669,137 @@
     iF.addEventListener('change', r); iM.addEventListener('input', r);
     quitar.addEventListener('click', function () { iF.value = ''; r(); });
     setTimeout(function () { if (K.piezas.fechas) K.piezas.fechas.montar(f); }, 0);
+    return s;
+  }
+
+  /* ══════════════ CIERRE DE LA VIGENCIA · PLAN (27/09/2026) ══════════════
+     Llave CIERRE_PLAN (CierreVigencia.gs del CORE). El reloj de 10 minutos
+     hace solo: aviso de noviembre, push de DEV de fin de año, alerta del
+     31/12 al grupo de desarrollo, VIGENCIA + 1 el 01/01 y, en la fecha del
+     vaciado, el ARCHIVO (copia del libro + Excel + carpetas de SECRETARIAS
+     movidas) y el vaciado del libro. "Revisar" no toca nada; "Ejecutar
+     ahora" es solo para DEV. */
+
+  function bloquePlanCierre() {
+    var hoyA = new Date().getFullYear();
+    var semilla = { activo: true, avisoNoviembre: '01/12/' + hoyA, pushDesde: '24/12/' + hoyA, pushHasta: '31/12/' + hoyA, hora: '08:00',
+                    alertaHora: '17:00', vaciado: '29/01/' + (hoyA + 1), vaciadoHora: '19:00', conservarContratistas: true };
+    var orig = valorJson('CIERRE_PLAN', null);
+    var existe = !!orig;
+    orig = orig || semilla;
+    var v = copia(orig);
+    var s = seccion('archivo', 'CIERRE DE LA VIGENCIA · AUTOMÁTICO',
+      'Lo hace el reloj solo. <b>Diciembre</b>: aviso de que la cuenta de noviembre debe estar CERRADA, y push de DEV cada día hasta el último. ' +
+      '<b>31/12</b>: alerta al grupo de desarrollo con las cuentas que no llegaron a CERRADA. <b>01/01</b>: la VIGENCIA sube un año (órdenes y egresos salen con el año nuevo). ' +
+      '<b>Fecha del vaciado</b>: si ya no queda ninguna cuenta sin PAGADA ni contratos ACTIVO o NOTIFICADO, se crea la carpeta ARCHIVO VIGENCIA con la copia del libro, el Excel y las carpetas de SECRETARIAS (se <b>mueven</b>, no se copian), y se vacía el libro. Llega un aviso con el enlace para descargarlo.');
+    if (!existe) s.appendChild(K.nodo('<p class="formulario__nota formulario__nota--fuerte ad-aviso">' + K.icono('aviso', 14) + ' La llave CIERRE_PLAN todavía no está en CONFIG: corre FCCV_migrar en el CORE.</p>'));
+
+    var sw = K.nodo('<label class="op-check cf-sw ad-sw"><input type="checkbox"><span></span></label>');
+    var iA = sw.querySelector('input'); iA.checked = v.activo !== false;
+    s.appendChild(sw);
+
+    function campoF(t, k) {
+      var l = K.nodo('<label class="op-campo"><span></span><input class="ad-in" type="date" data-kit-fecha></label>');
+      l.querySelector('span').textContent = t;
+      var i = l.querySelector('input'); i.setAttribute('data-titulo', t);
+      var p = String(v[k] || '').split('/'); if (p.length === 3) i.value = p[2] + '-' + p[1] + '-' + p[0];
+      i.addEventListener('change', function () { var x = i.value ? i.value.split('-') : null; v[k] = x ? x[2] + '/' + x[1] + '/' + x[0] : ''; r(); });
+      return l;
+    }
+    function campoH(t, k) {
+      var l = K.nodo('<label class="op-campo"><span></span><input class="ad-in" type="time" step="600"></label>');
+      l.querySelector('span').textContent = t;
+      var i = l.querySelector('input'); i.value = v[k] || '';
+      i.addEventListener('input', function () { v[k] = i.value; r(); });
+      return l;
+    }
+    var g = K.nodo('<div class="cf-item__campos ad-cierre"></div>');
+    g.appendChild(campoF('Aviso: noviembre debe estar CERRADA', 'avisoNoviembre'));
+    g.appendChild(campoF('Push de DEV desde', 'pushDesde'));
+    g.appendChild(campoF('Push de DEV hasta (y alerta a DEV)', 'pushHasta'));
+    g.appendChild(campoH('Hora de los avisos', 'hora'));
+    g.appendChild(campoH('Hora de la alerta a DEV', 'alertaHora'));
+    g.appendChild(campoF('Vaciado del libro', 'vaciado'));
+    g.appendChild(campoH('Hora del vaciado', 'vaciadoHora'));
+    s.appendChild(g);
+    var sw2 = K.nodo('<label class="op-check cf-sw ad-sw"><input type="checkbox"><span></span></label>');
+    var iC = sw2.querySelector('input'); iC.checked = v.conservarContratistas !== false;
+    s.appendChild(sw2);
+    function textos() {
+      sw.querySelector('span').innerHTML = iA.checked ? '<b>Cierre automático ENCENDIDO</b>' : 'Cierre automático apagado: el reloj no hace nada de esto';
+      sw2.querySelector('span').innerHTML = iC.checked ? 'CONTRATISTAS <b>se conserva</b> (la recontratación hereda datos, contraseña y firma)' : 'CONTRATISTAS <b>también se vacía</b> (la recontratación entra como persona nueva)';
+    }
+    iA.addEventListener('change', function () { v.activo = iA.checked; textos(); r(); });
+    iC.addEventListener('change', function () { v.conservarContratistas = iC.checked; textos(); r(); });
+    textos();
+    var r = pieGuardar(s, 'CIERRE_PLAN', function () {
+      ['avisoNoviembre', 'pushDesde', 'pushHasta', 'vaciado'].forEach(function (k) { if (!/^\d{2}\/\d{2}\/\d{4}$/.test(v[k] || '')) throw new Error('Falta una fecha.'); });
+      ['hora', 'alertaHora', 'vaciadoHora'].forEach(function (k) { if (!/^\d{2}:\d{2}$/.test(v[k] || '')) throw new Error('Falta una hora.'); });
+      return JSON.stringify(v);
+    }, function () { return JSON.stringify(v) !== JSON.stringify(orig); });
+    setTimeout(function () { if (K.piezas.fechas) K.piezas.fechas.montar(g); }, 0);
+
+    /* revisar (no toca nada) y, para DEV, ejecutar ya */
+    var acc = K.nodo('<div class="ct-acc ad-top"></div>');
+    var bR = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('buscar', 14) + ' Revisar el cierre</button>');
+    acc.appendChild(bR);
+    var bE = null;
+    if (C.esDev && C.esDev()) {
+      bE = K.nodo('<button type="button" class="kit-btn kit-btn--malo">' + K.icono('archivo', 14) + ' Ejecutar ahora</button>');
+      acc.appendChild(bE);
+    }
+    s.appendChild(acc);
+    var zr = K.nodo('<div class="ad-cierre-res"></div>');
+    s.appendChild(zr);
+
+    function pintarRes(d) {
+      zr.innerHTML = '';
+      var ok = d.listo;
+      zr.appendChild(K.nodo('<p class="formulario__nota formulario__nota--fuerte ' + (ok ? '' : 'ad-aviso') + '">' + K.icono(ok ? 'check' : 'reloj', 14) + ' ' +
+        (ok ? 'La vigencia ' + d.vigencia + ' está lista para archivarse.'
+            : 'La vigencia ' + d.vigencia + ' todavía no se puede archivar: ' + K.numero(d.sinPagar) + ' cuentas sin PAGADA y ' + K.numero(d.vivos) + ' contratos ACTIVO o NOTIFICADO.') + '</p>'));
+      zr.appendChild(K.nodo('<p class="formulario__nota">Vigencia actual: <b>' + d.vigenciaActual + '</b> · contratos de ' + d.vigencia + ': <b>' + K.numero(d.contratos) + '</b> · cuentas: <b>' + K.numero(d.cuentas) +
+        '</b> · carpetas por mover: <b>' + K.numero(d.carpetas) + '</b>' + (d.sinAnio ? ' · <span class="ad-aviso">' + d.sinAnio + ' contratos sin año reconocible (no se tocan)</span>' : '') +
+        ' · cuentas de ' + d.vigenciaActual + ' que aún no llegan a CERRADA: <b>' + K.numero(d.sinCerrarActual) + '</b></p>'));
+      var t = K.nodo('<div class="ad-cierre-tabla" role="table"></div>');
+      t.appendChild(K.nodo('<div class="ad-cierre-f ad-cierre-f--cab" role="row"><span>Hoja</span><span>Filas</span><span>Se borran</span><span>Regla</span></div>'));
+      (d.hojas || []).forEach(function (h) {
+        var f = K.nodo('<div class="ad-cierre-f" role="row"><span></span><span></span><span></span><span></span></div>');
+        var c = f.querySelectorAll('span');
+        c[0].textContent = h.hoja; c[1].textContent = K.numero(h.filas); c[2].textContent = K.numero(h.borrar);
+        c[3].textContent = h.regla + (h.sinClave ? ' · ' + h.sinClave + ' sin llave ni fecha (se quedan)' : '');
+        if (!h.borrar) f.classList.add('ad-cierre-f--nada');
+        t.appendChild(f);
+      });
+      zr.appendChild(t);
+      if (d.archivo) {
+        var a = d.archivo;
+        var ca = K.nodo('<div class="kit-tarjeta ad-cierre-arch"><p class="formulario__nota formulario__nota--fuerte"></p><ul class="ad-cierre-log"></ul></div>');
+        ca.querySelector('p').innerHTML = K.icono('archivo', 14) + ' Archivo ' + a.vig + ': etapa <b>' + K.esc(a.etapa) + '</b>' + (a.error ? ' · <span class="ad-malo">' + K.esc(a.error) + '</span>' : '') +
+          (a.carpeta ? ' · <a href="' + K.esc(a.carpeta) + '" target="_blank" rel="noopener">Abrir la carpeta</a>' : '');
+        (a.log || []).forEach(function (l) { var li = document.createElement('li'); li.textContent = l; ca.querySelector('ul').appendChild(li); });
+        zr.appendChild(ca);
+      }
+    }
+
+    bR.addEventListener('click', function () {
+      bR.disabled = true;
+      K.piezas.guardado.mientras(K.pedir('cierreEnsayo', {}, { ms: 120000 }), {
+        titulo: 'Revisando el cierre', sub: 'Solo se lee: no se mueve ni se borra nada.',
+        pasos: ['Leyendo contratos y cuentas…', 'Contando lo que se archivaría…'], listo: { titulo: 'Revisión lista', paso: 'Nada se tocó' }
+      }).then(function (d) { bR.disabled = false; pintarRes(d); }, function (e) { bR.disabled = false; K.aviso((e && e.message) || 'No se pudo revisar.', 'malo', 8000); });
+    });
+    if (bE) bE.addEventListener('click', function () {
+      K.piezas.confirmar.preguntar({ titulo: 'Ejecutar el cierre ahora', texto: 'Si la vigencia anterior está lista, se crea el ARCHIVO, se MUEVEN sus carpetas de SECRETARIAS y se VACÍA el libro. No se puede deshacer desde la app. ¿Seguimos?', si: 'Sí, ejecutar', peligro: true })
+        .then(function (si) {
+          if (!si) return;
+          bE.disabled = true;
+          K.piezas.guardado.mientras(K.pedir('cierreEjecutar', {}, { ms: 360000 }), {
+            titulo: 'Cerrando la vigencia', sub: 'Puede tardar unos minutos; si no termina, el reloj sigue solo.',
+            pasos: ['Revisando…', 'Archivando…', 'Vaciando…'], listo: { titulo: 'Listo', paso: 'Queda en la bitácora' }
+          }).then(function (d) { bE.disabled = false; pintarRes(d); }, function (e) { bE.disabled = false; K.aviso((e && e.message) || 'No se pudo ejecutar.', 'malo', 9000); });
+        });
+    });
     return s;
   }
 
