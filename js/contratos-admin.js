@@ -259,7 +259,7 @@
     var c = d.contrato || {};
     var g = K.nodo('<section class="kit-tarjeta grupo gs-resumen"></section>');
     var cab = K.nodo('<div class="ct-t__cab"></div>');
-    if (K.piezas.personas) cab.appendChild(K.piezas.personas.avatar(c.nombre || (d.datos || {}).nombre, { tam: 44 }));
+    if (K.piezas.personas) cab.appendChild(K.piezas.personas.avatar(c.nombre || (d.datos || {}).nombre, { tam: 44, foto: c.img || (d.datos || {}).imagen || '' }));
     cab.appendChild(K.nodo('<div class="ct-t__quien"><h3 class="ct-t__n">' + K.esc(nombre((d.datos || {}).nombre)) + '</h3>' +
       '<p class="ct-t__doc">Contrato ' + K.esc(c.contrato) + ' · ' + K.esc(c.estado || '') + ' · ' + K.esc(c.tramo || 'PRIMARIO') + '</p></div>'));
     g.appendChild(cab);
