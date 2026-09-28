@@ -67,7 +67,9 @@
     LISTA_TRAMOS: ['catalogos', 'Tramos del contrato', 'lista'],
     CARPETAS_SECRETARIA: ['grupos', 'Carpeta de cada secretaría', 'mapaCarpetas'],
     DRIVE_HACIENDA: ['grupos', 'Drive de Hacienda (Supervisión)', 'json'],
-    GRUPO_CONTRATACION: ['grupos', 'Grupo de Contratación (cuentas que aprueba el supervisor, recordatorio de las revisadas y solicitudes nuevas de los contratistas)', 'grupo'],
+    GRUPO_CONTRATACION: ['grupos', 'Grupo de Contratación (cuentas que aprueba el supervisor y recordatorio de las revisadas)', 'grupo'],
+    /* 27/09 · grupo propio para las SOLICITUDES A CONTRATACIÓN, para no mezclarlas con la revisión. Vacío = van al de Contratación */
+    GRUPO_SOLICITUDES_CONTRATACION: ['grupos', 'Grupo de Solicitudes a Contratación (solicitudes nuevas de los contratistas; si queda vacío, van al grupo de Contratación)', 'grupo'],
     CARPETA_GUIAS: ['guias', 'Carpeta GUÍAS RÁPIDAS (Drive)', 'carpeta'],
     CARPETA_TUTORIALES: ['grupos', 'Carpeta TUTORIALES EN VIDEO (videos y portadas del contratista)', 'carpeta'],
     GUIA_CONTRATISTA: ['guias', 'Guía de Contratista', 'guia'],
@@ -383,6 +385,11 @@
     },
     grupo: function (t, it) {
       campoTexto(t, it, { extra: function (inp) {
+        /* 27/09 · si pegan el enlace de invitación (https://chat.whatsapp.com/XXXX) se queda solo el id */
+        inp.addEventListener('input', function () {
+          var m = /chat\.whatsapp\.com\/(?:invite\/)?([A-Za-z0-9]+)/.exec(inp.value);
+          if (m) inp.value = m[1];
+        });
         var b = K.nodo('<button type="button" class="kit-btn kit-btn--plano ad-mini">' + K.icono('copiar', 14) + ' Copiar id</button>');
         b.addEventListener('click', function () { copiar(inp.value); });
         return b;

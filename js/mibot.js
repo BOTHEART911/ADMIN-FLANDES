@@ -256,6 +256,11 @@
       accion('botLlave', { llave: v }, 'Comprobando la llave').then(function (r) { if (r) { inp.value = ''; recibir(r); } });
     });
     s.cuerpo.appendChild(fila([inp, bG]));
+    /* 27/09 · ojo para ver la llave pegada antes de guardarla (pieza de sesión del kit) */
+    if (K.piezas.sesion && K.piezas.sesion.ponerOjo) {
+      K.piezas.sesion.ponerOjo(inp);
+      if (inp.parentNode) inp.parentNode.classList.add('bt-llave__caja');
+    }
     return s.caja;
   }
 

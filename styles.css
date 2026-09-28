@@ -3240,6 +3240,8 @@ button.so-per:hover { border-color: var(--k-marca); background: rgba(var(--k-mar
 .bt-num { flex: 1 1 200px; min-width: 0; min-height: 42px; padding: 8px 14px; border: 1px solid var(--k-linea); border-radius: var(--k-r-pill);
   background: var(--k-papel); color: var(--k-tinta); font: 500 .95rem var(--k-fuente); }
 .bt-num:focus { outline: 2px solid var(--k-marca); outline-offset: 1px; }
+.bt-llave__caja { flex: 1 1 200px; min-width: 0; }   /* 27/09 · la llave con su ojo ocupa lo que ocupaba el campo */
+.bt-llave__caja .bt-num { width: 100%; padding-right: 46px; }
 .bt-qr { text-align: center; }
 .bt-qr__img { width: min(280px, 80vw); height: auto; margin: 10px auto 6px; display: block; background: #fff; padding: 10px; border-radius: var(--k-r-md); box-shadow: var(--k-sombra-1); }
 .bt-bloq, .bt-grupo { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--k-linea); font: 600 .88rem var(--k-fuente); color: var(--k-tinta); }
