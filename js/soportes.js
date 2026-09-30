@@ -95,7 +95,11 @@
   }
 
   function traer() {
-    return O().leer('soportes').then(function (d) { D = d; D.cifras = cifras(D.lista || []); alInicio(null); return d; });
+    /* 30/09 · sin la lista de personas (solo hace falta para CARGAR un soporte) */
+    return O().leer('soportes', { sinPersonas: true }).then(function (d) {
+      if (d && d.personas) PERSONAS = d.personas;              /* CORE sin desplegar: vienen igual */
+      D = d; D.cifras = cifras(D.lista || []); alInicio(null); return d;
+    });
   }
 
   /* ══════════════ la vista ══════════════ */
@@ -334,8 +338,19 @@
 
   /* ══════════════ cargar un soporte a nombre de alguien ══════════════ */
 
+  var PERSONAS = null, PERSONAS_P = null;
+  /** 30/09 · a quién se le puede cargar un soporte: se pide al abrir el formulario, una vez. */
+  function traerPersonas() {
+    if (PERSONAS) return Promise.resolve(PERSONAS);
+    if (!PERSONAS_P) {
+      PERSONAS_P = O().leer('soportePersonas').then(function (p) { PERSONAS = p; PERSONAS_P = null; return p; },
+        function (e) { PERSONAS_P = null; throw e; });
+    }
+    return PERSONAS_P;
+  }
+
   function personas() {
-    var p = (D && D.personas) || {};
+    var p = PERSONAS || (D && D.personas) || {};
     var out = [];
     var c = p.contratistas || { filas: [] }, u = p.usuarios || { filas: [] };
     c.filas.forEach(function (f) { out.push({ tipo: 'CONTRATISTA', id: f[0], doc: f[1], nombre: f[2], estado: f[3], det: 'Contrato ' + f[5] + ' · ' + (f[4] || '') + (f[3] && f[3] !== 'ACTIVO' ? ' · ' + f[3] : '') }); });
@@ -365,8 +380,14 @@
       zt.appendChild(b);
     });
     var todos = personas();
+    var esperando = !PERSONAS && !(D && D.personas);
+    if (esperando) {
+      traerPersonas().then(function () { esperando = false; todos = personas(); buscar(); },
+        function (e) { res.innerHTML = ''; res.appendChild(K.nodo('<p class="formulario__nota formulario__nota--fuerte">No se pudo traer la lista de personas: ' + K.esc((e && e.message) || 'intenta de nuevo') + '</p>')); });
+    }
     function buscar() {
       res.innerHTML = '';
+      if (esperando) { res.appendChild(K.nodo('<p class="formulario__nota">Trayendo la lista de personas…</p>')); return; }
       var q = K.norm(inp.value);
       if (q.length < 2) { res.appendChild(K.nodo('<p class="formulario__nota">Escribe al menos dos letras o números.</p>')); return; }
       var l = todos.filter(function (p) { return p.tipo === tipo && K.norm([p.nombre, p.doc, p.id, p.det].join(' ')).indexOf(q) >= 0; });

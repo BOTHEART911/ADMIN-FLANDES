@@ -249,6 +249,9 @@
     var cuerpo = K.nodo('<div class="gs-cuerpo"></div>');
     caja.appendChild(cuerpo);
     K.piezas.creditos.montar(caja);
+    /* 30/09 · si se viene de la ficha de este contrato (hace menos de 2 min), no se vuelve a pedir */
+    var ya = window.CONTRATISTAS && window.CONTRATISTAS.fichaReciente ? window.CONTRATISTAS.fichaReciente(id) : null;
+    if (ya) { ULTIMA = { vista: t, d: ya }; pintar(cuerpo, ya, partes[1] || ''); return; }
     var espera = K.pedir('contratistaDetalle', { idContrato: id }, { ms: 60000 });
     K.piezas.esqueletos.mientras(cuerpo, espera, { forma: 'texto', cuantos: 6 })
       .then(function (d) { cuerpo.innerHTML = ''; ULTIMA = { vista: t, d: d }; pintar(cuerpo, d, partes[1] || ''); })

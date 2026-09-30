@@ -68,11 +68,31 @@
     caja.appendChild(zona);
     K.piezas.creditos.montar(caja);
 
-    var p = K.pedir('recordatorios', {}, { ms: 90000 }).then(function (d) { V = d; return d; });
+    vista._zona = zona;
+    var ya = V;
+    var p = K.pedir('recordatorios', {}, { ms: 90000 });
+    if (ya) {
+      pintar(zona);
+      if (window.AYUDA) window.AYUDA.montar('recordatorios');
+      alLlegarNuevo(zona, ya, p, function (d, repintar) { V = d; if (repintar) pintar(zona); });
+      return;
+    }
+    p = p.then(function (d) { V = d; return d; });
     K.piezas.esqueletos.mientras(zona, p, { forma: 'ficha', cuantos: 3 })
       .then(function () { pintar(zona); if (window.AYUDA) window.AYUDA.montar('recordatorios'); },
         function (e) { zona.appendChild(C.errorCaja(e)); });
-    vista._zona = zona;
+  }
+
+  /* 30/09 · Lo que ya está en el teléfono se pinta de una vez; la versión nueva
+     llega por detrás y solo se vuelve a pintar si cambió, la vista sigue
+     abierta y la persona no está escribiendo en ella. */
+  function alLlegarNuevo(zona, viejo, p, aplicar) {
+    var antes = JSON.stringify(viejo);
+    p.then(function (d) {
+      if (JSON.stringify(d) === antes) return;
+      if (!zona.isConnected || zona.contains(document.activeElement)) { aplicar(d, false); return; }
+      aplicar(d, true);
+    }, function () {});
   }
 
   function pintar(zona) {
