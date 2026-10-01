@@ -137,7 +137,9 @@
 
   var TIPOS_AVISO = {
     CUENTA_RADICADA: 'Cuenta radicada', CUENTA_VISTO_BUENO: 'Visto bueno del revisor', CUENTA_REVISADA_SUPERVISOR: 'Revisada por el supervisor',
-    CUENTA_INCOMPLETA: 'Cuenta incompleta', CUENTA_APROBADA: 'Cuenta aprobada (hacer plan de pagos)', CUENTA_DEVUELTA: 'Cuenta devuelta',
+    CUENTA_INCOMPLETA: 'Cuenta incompleta (supervisor)', CUENTA_APROBADA: 'Cuenta aprobada por Contratación (hacer plan de pagos)', CUENTA_DEVUELTA: 'Cuenta devuelta por el supervisor',
+    /* 01/10 · Contratación (segundo filtro) firma con el revisor que decidió */
+    CUENTA_DEVUELTA_CONTRATACION: 'Cuenta devuelta por Contratación', GRUPO_DEVUELTA_CONTRATACION: 'Cuenta devuelta por Contratación · aviso al grupo del supervisor',
     CUENTA_EN_CONTABILIDAD: 'Cuenta en Contabilidad', ORDEN_PAGO: 'Orden de pago', EGRESO: 'Egreso', PAGO: 'Pago',
     CONTRATO_NUEVO: 'Contrato nuevo', CLAVE_RECUPERADA: 'Contraseña recuperada', USUARIO_ALTA: 'Alta de usuario',
     CONTRATO_ADICION: 'Adición del contrato', CONTRATO_CESION: 'Cesión del contrato', CONTRATO_SUSPENSION: 'Suspensión del contrato',
@@ -153,6 +155,11 @@
   };
   /* Los avisos del bot son solo correo y tienen sus propios marcadores */
   function esAvisoBot(t) { return t === 'BOT_DESCONECTADO' || t === 'BOT_RECONECTADO'; }
+  /* 01/10 · el texto que va al GRUPO de WhatsApp del supervisor: solo WhatsApp */
+  function esAvisoGrupo(t) { return t === 'GRUPO_DEVUELTA_CONTRATACION'; }
+  /* 01/10 · los avisos de la decisión de Contratación: firma el revisor */
+  var AVISOS_CONTRATACION = ['CUENTA_APROBADA', 'CUENTA_DEVUELTA_CONTRATACION', 'GRUPO_DEVUELTA_CONTRATACION'];
+  var MARCADORES_CONTRATACION = '{revisor} {contratista} {nombre} {contrato} {informe} {total} {cuenta} {motivo} {motivo_negrilla} {observacion} {supervisor} {fecha}';
   var MARCADORES_BOT = '{estado} {fecha} {desde} {duracion} {detalle} {enlace} {proyecto}';
   var MARCADORES = '{nombre} {contrato} {informe} {estado} {valor} {observacion} {supervisor} {secretaria} {orden} {egreso} {fecha} {app} {clave} {codigo} {evento} {asignados} {hasta} {tipo} {documento} {telefono} {detalle} {solicitud} {respuesta} {gestion} {donde}';
 
@@ -1083,18 +1090,21 @@
   function editarAviso(tipo) {
     var a = D().avisos, p = copia(a.plantillas[tipo] || {}), c = (a.canales[tipo] || []).slice();
     p.push = p.push || {};
-    var bot = esAvisoBot(tipo);
+    var bot = esAvisoBot(tipo), grupo = esAvisoGrupo(tipo), deCont = AVISOS_CONTRATACION.indexOf(tipo) >= 0;
     if (bot) c = ['CORREO'];
+    if (grupo) c = ['WHATSAPP'];
     var f = K.nodo('<div class="formulario ad-form"></div>');
-    f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(bot ? MARCADORES_BOT : MARCADORES) + '</code>. El que no venga en el aviso se borra solo.' +
-      (bot ? ' Este aviso sale <b>solo por correo</b> a los correos de la tarjeta <b>ALERTA DE BOT DESCONECTADO</b> (arriba).' : '') + '</p>'));
+    f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(bot ? MARCADORES_BOT : (deCont ? MARCADORES_CONTRATACION : MARCADORES)) + '</code>. El que no venga en el aviso se borra solo. Un texto que dejes <b>vacío</b> sale con el texto por defecto.' +
+      (bot ? ' Este aviso sale <b>solo por correo</b> a los correos de la tarjeta <b>ALERTA DE BOT DESCONECTADO</b> (arriba).' : '') +
+      (deCont ? ' Lo firma <b>{revisor}</b>: el usuario de Contratación que aprobó o devolvió. <b>{motivo}</b> pone cada motivo en su línea con “- ” y <b>{motivo_negrilla}</b> igual pero en negrilla.' : '') +
+      (grupo ? ' Este texto sale <b>solo por WhatsApp</b> al grupo del supervisor del contrato cuando Contratación devuelve una cuenta.' : '') + '</p>'));
     var can = K.nodo('<div class="cf-chips"></div>');
     ['PUSH', 'WHATSAPP', 'CORREO'].forEach(function (x) {
       var b = K.nodo('<button type="button" class="kit-pastilla" aria-pressed="' + (c.indexOf(x) >= 0) + '">' + K.icono(x === 'PUSH' ? 'campana' : (x === 'CORREO' ? 'sobre' : 'whatsapp'), 13) + ' ' + x + '</button>');
       b.addEventListener('click', function () { var i = c.indexOf(x); if (i >= 0) c.splice(i, 1); else c.push(x); b.setAttribute('aria-pressed', c.indexOf(x) >= 0); });
       can.appendChild(b);
     });
-    var lc = K.nodo('<div class="campo"><span>Canales por los que sale</span></div>'); lc.appendChild(can); if (!bot) f.appendChild(lc);
+    var lc = K.nodo('<div class="campo"><span>Canales por los que sale</span></div>'); lc.appendChild(can); if (!bot && !grupo) f.appendChild(lc);
     function campo(et, val, largo, max) {
       var l = K.nodo('<label class="campo"><span>' + K.esc(et) + '</span>' + (largo ? '<textarea rows="4"></textarea>' : '<input type="text">') + '<small class="ad-cuenta"></small></label>');
       var i = l.querySelector(largo ? 'textarea' : 'input');
@@ -1106,11 +1116,11 @@
       f.appendChild(l);
       return i;
     }
-    var iPT = bot ? null : campo('Push · título', p.push.titulo, false, 65);
-    var iPC = bot ? null : campo('Push · cuerpo', p.push.cuerpo, true, 240);
-    var iWA = bot ? null : campo('WhatsApp', p.wa, true, 2000);
-    var iAs = campo('Correo · asunto', p.asunto, false, 150);
-    var iCo = campo('Correo · cuerpo', p.correo, true, 4000);
+    var iPT = (bot || grupo) ? null : campo('Push · título', p.push.titulo, false, 65);
+    var iPC = (bot || grupo) ? null : campo('Push · cuerpo', p.push.cuerpo, true, 240);
+    var iWA = bot ? null : campo(grupo ? 'WhatsApp al grupo del supervisor' : 'WhatsApp', p.wa, true, 2000);
+    var iAs = grupo ? null : campo('Correo · asunto', p.asunto, false, 150);
+    var iCo = grupo ? null : campo('Correo · cuerpo', p.correo, true, 4000);
     var iMo = campo('Motivo del cambio (queda en la bitácora)', '', false, 300);
     var m = O().modal({ titulo: TIPOS_AVISO[tipo] || tipo, cuerpo: f, ancha: true,
       botones: [{ texto: 'Cancelar', al: function () { m.cerrar(); } }, { texto: 'Guardar', icono: 'check', marca: true, al: guardar }] });
@@ -1125,8 +1135,10 @@
     }
     function enviar() {
       m.botones[1].disabled = true;
-      var dat = { tipo: tipo, asunto: iAs.value, correo: iCo.value, canales: c, motivo: iMo.value.trim() };
-      if (!bot) { dat.pushTitulo = iPT.value; dat.pushCuerpo = iPC.value; dat.wa = iWA.value; }
+      var dat = { tipo: tipo, canales: c, motivo: iMo.value.trim() };
+      if (iAs) { dat.asunto = iAs.value; dat.correo = iCo.value; }
+      if (iPT) { dat.pushTitulo = iPT.value; dat.pushCuerpo = iPC.value; }
+      if (iWA) dat.wa = iWA.value;
       K.piezas.guardado.mientras(K.pedir('avisoGuardar', dat, { ms: 60000 }), {
         titulo: 'Guardando el aviso', sub: TIPOS_AVISO[tipo] || tipo, pasos: ['Guardando el texto…', 'Guardando los canales…'], listo: { titulo: 'Aviso al día', paso: 'Queda en la bitácora' }
       }).then(function (r) {
