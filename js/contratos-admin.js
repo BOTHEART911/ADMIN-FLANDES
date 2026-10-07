@@ -254,7 +254,7 @@
           if (AL_SOPORTE) AL_SOPORTE(r);
           /* solo se repinta si la persona sigue en esa ficha: nunca se la saca de donde está */
           if (location.hash === '#/contratista/' + encodeURIComponent(d.idContrato) && C.enrutar) C.enrutar();
-          K.aviso('Cuenta ' + r.informe + ' de ' + nombre(f.nombre) + ': se rehicieron ' + r.documentos.length + (r.documentos.length === 1 ? ' documento' : ' documentos') +
+          K.aviso('Cuenta ' + (r.informe || cu.informe) + ' de ' + nombre(f.nombre) + ': se rehicieron ' + r.documentos.length + (r.documentos.length === 1 ? ' documento' : ' documentos') +
             ' (' + r.documentos.join(', ') + ') · soporte ' + r.soporte.id +
             (r.errores && r.errores.length ? '. No salieron: ' + r.errores.join(' · ') : '.'), r.errores && r.errores.length ? 'aviso' : 'ok', 12000);
         }, function (e) {
