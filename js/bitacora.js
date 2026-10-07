@@ -62,7 +62,7 @@
 
     var b = O().barra({ placeholder: 'Buscar por llave, persona, motivo o valor', valor: F.buscar,
       alBuscar: function (t) { F.buscar = t; pintar(); },
-      alRefrescar: function () { return C.recargar().then(function () { TODA = null; pastillas(); pintar(); }); } });
+      alRefrescar: function () { return C.recargar('bitacora').then(function () { TODA = null; pastillas(); pintar(); }); } });
     caja.appendChild(b.caja);
 
     var fechas = K.nodo('<div class="rp-fechas ad-fechas">' +

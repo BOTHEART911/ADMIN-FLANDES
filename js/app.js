@@ -92,8 +92,64 @@
     });
   }
 
+  /* 07/10 · EL INICIO LIGERO. Medido (FC_MEDICION 01-07/10): el 'inicio' de ADMIN
+     costaba 3,7 s de servidor (p90 5,7 s) y 234 KB, y el login que lo trae 5,1 s:
+     viajaban la bitácora (113 KB), CONFIG cruda (75 KB) y las plantillas para
+     pintar botones y seis cifras. Ahora el login trae lo mínimo (las cifras ya
+     contadas, 11 KB, 0,2–0,8 s); lo de CONFIGURACIÓN y USUARIOS llega de fondo
+     ('inicio' con soloDatos, 94 KB) y la bitácora la pide su vista.
+     Con un CORE viejo, 'inicio' devuelve todo y nada de esto hace falta. */
+  var DATOS_CAMPOS = ['cfg', 'festivos', 'supervisores', 'secretarias', 'usuarios', 'roles', 'rolesMultiples', 'apps', 'avisos'];
+  /* el recuerdo guarda solo lo ligero: los datos de las vistas se piden frescos en cada apertura */
+  function soloLigero(d) {
+    if (!d || !d.ligero) return d;
+    var o = {}, k;
+    for (k in d) if (Object.prototype.hasOwnProperty.call(d, k) && DATOS_CAMPOS.indexOf(k) < 0 && k !== 'bitacora') o[k] = d[k];
+    return o;
+  }
+  function tieneDatos() { return !!(ARRANQUE && ARRANQUE.usuarios && ARRANQUE.cfg); }
+  function fundirDatos(d) {
+    if (!ARRANQUE || !d) return;
+    DATOS_CAMPOS.forEach(function (k) { if (d[k] !== undefined) ARRANQUE[k] = d[k]; });
+    if (!d.ligero && d.bitacora && !ARRANQUE.bitacora) { ARRANQUE.bitacora = d.bitacora; ARRANQUE.bitacoraTotal = d.bitacoraTotal; }
+  }
+  /* urgente: la pide una vista que la necesita YA (hereda la de fondo si ya iba) */
+  function traerDatos(urgente) {
+    if (tieneDatos()) return Promise.resolve(ARRANQUE);
+    var op = urgente ? { ms: 60000 } : { ms: 60000, fondo: true };
+    return K.pedir('inicio', { soloDatos: true }, op).then(function (d) { fundirDatos(d); return ARRANQUE; });
+  }
+  function conDatos(fn) {
+    if (tieneDatos()) return fn();
+    var marca = location.hash;
+    var quitar = K.piezas.esqueletos ? K.piezas.esqueletos.poner(app, { forma: 'ficha', cuantos: 2, espera: 'Cargando' }) : function () {};
+    traerDatos(true).then(function () {
+      quitar();
+      if (location.hash === marca) fn();
+    }, function (e) {
+      quitar();
+      if (location.hash === marca && !(e && e.codigo === 'CANCELADA')) app.appendChild(errorCaja(e, enrutar));
+    });
+  }
+  /* la bitácora la trae su vista: las últimas 200 (< 100 KB); "Traer toda" sigue igual */
+  function traerBitacora(fresca) {
+    if (!fresca && ARRANQUE && ARRANQUE.bitacora) return Promise.resolve(ARRANQUE);
+    return leer('bitacora', { ultimas: 200 }).then(function (r) {
+      if (!ARRANQUE) return ARRANQUE;
+      ARRANQUE.bitacora = r.lista || [];
+      ARRANQUE.bitacoraTotal = r.total !== undefined ? r.total : ARRANQUE.bitacora.length;
+      return ARRANQUE;
+    });
+  }
+
   function recibir(d) {
+    var antes = ARRANQUE;
     ARRANQUE = d;
+    /* el inicio ligero no trae los datos de las vistas: se quedan los que ya había */
+    if (d && d.ligero && antes) {
+      DATOS_CAMPOS.forEach(function (k) { if (d[k] === undefined && antes[k] !== undefined) d[k] = antes[k]; });
+      if (antes.bitacora && !d.bitacora) { d.bitacora = antes.bitacora; d.bitacoraTotal = (d.resumen && d.resumen.bitacoraTotal) || antes.bitacoraTotal; }
+    }
     YO = d.yo || YO;
     if (d.personas && K.piezas.personas) K.piezas.personas.cargar(d.personas);
     if (d.push && K.piezas.avisos && K.piezas.avisos.configurar) K.piezas.avisos.configurar(d.push);
@@ -117,9 +173,9 @@
       ? K.piezas.esqueletos.poner(app, { forma: 'ficha', cuantos: 1, sitio: 'reemplaza', espera: 'Cargando Admin Flandes' })
       : function () {};
 
-    return (yaVino ? Promise.resolve(yaVino) : recordado ? Promise.resolve(recordado) : leer('inicio')).then(function (d) {
+    return (yaVino ? Promise.resolve(yaVino) : recordado ? Promise.resolve(recordado) : leer('inicio', { ligero: true })).then(function (d) {
       recibir(d);
-      if (K.recuerdo) { if (recordado) setTimeout(refrescarArranque, 30); else K.recuerdo.guardar(d); }
+      if (K.recuerdo) { if (recordado) setTimeout(refrescarArranque, 30); else K.recuerdo.guardar(soloLigero(d)); }
       quitar();
       return d;
     }, function (e) {
@@ -130,7 +186,7 @@
   /* 25/09 · el 'inicio' de verdad, por detrás: se aplica, se guarda y, si la
      persona sigue en el inicio, se vuelve a pintar con lo nuevo. */
   function refrescarArranque() {
-    leer('inicio').then(function (d) {
+    leer('inicio', { ligero: true }).then(function (d) {
       return arranque(false, { arranque: d, refresco: true });
     }).then(function () {
       var v = String(location.hash || '').replace(/^#\/?/, '').split('/')[0] || 'inicio';
@@ -163,6 +219,8 @@
         sub: 'Ingresa con tu documento y contraseña',
         imagen: M.APP_ICON || 'img/icono-512.png',
         arranqueEnLogin: true,
+        /* 07/10 · el login trae el inicio LIGERO (con un CORE viejo, el de siempre) */
+        datosArranque: function () { return { ligero: true }; },
         comprobar: function (login) { return arranque(true, login).then(function (d) { return d.yo; }); },
         alEntrar: arrancar
       });
@@ -194,7 +252,11 @@
       /* una o varias filas nuevas de bitácora, arriba */
       bitacora: function (filas) {
         if (!ARRANQUE) return;
-        [].concat(filas || []).filter(Boolean).reverse().forEach(function (f) { ARRANQUE.bitacora.unshift(f); ARRANQUE.bitacoraTotal = (ARRANQUE.bitacoraTotal || 0) + 1; });
+        [].concat(filas || []).filter(Boolean).reverse().forEach(function (f) {
+          if (ARRANQUE.bitacora) ARRANQUE.bitacora.unshift(f);
+          ARRANQUE.bitacoraTotal = (ARRANQUE.bitacoraTotal || 0) + 1;
+          if (ARRANQUE.resumen) { ARRANQUE.resumen.cambiosHoy = (ARRANQUE.resumen.cambiosHoy || 0) + 1; ARRANQUE.resumen.bitacoraTotal = (ARRANQUE.resumen.bitacoraTotal || 0) + 1; }
+        });
       },
       /* una llave de CONFIG que cambió */
       llave: function (item) {
@@ -219,8 +281,14 @@
         if (!ARRANQUE || !ARRANQUE.avisos) return;
         ARRANQUE.avisos.plantillas[tipo] = plantilla; ARRANQUE.avisos.canales[tipo] = canales;
       },
-      /* vuelve a traer el arranque entero (el botón Refrescar del inicio) */
-      recargar: function () { return leer('inicio').then(function (d) { recibir(d); return d; }); },
+      /* 07/10 · Refrescar: cada vista trae SOLO lo suyo, en un viaje.
+         'inicio' → las cifras (ligero) · 'bitacora' → sus filas · sin nada → lo de CONFIGURACIÓN y USUARIOS */
+      recargar: function (que) {
+        if (que === 'inicio') return leer('inicio', { ligero: true }).then(function (d) { if (K.recuerdo) K.recuerdo.guardar(soloLigero(d)); recibir(d); return d; });
+        if (que === 'bitacora') return traerBitacora(true);
+        return leer('inicio', { soloDatos: true }).then(function (d) { fundirDatos(d); return ARRANQUE; });
+      },
+      traerBitacora: traerBitacora,
       miFoto: miFoto, abrirFoto: abrirFoto
     };
   }
@@ -277,6 +345,8 @@
     window.addEventListener('hashchange', enrutar);
     enrutar();
     leerVersiones();
+    /* 07/10 · lo de CONFIGURACIÓN y USUARIOS, de fondo, detrás de lo que pinta la vista */
+    traerDatos(false)['catch'](function () {});
   }
 
   /* La versión publicada de cada app, de su version.js (sin caché, sin CORE). */
@@ -364,9 +434,16 @@
 
   var VISTAS = {
     inicio: vistaInicio,
-    configuracion: function (sub) { window.CONFIG.vista(sub); },
-    usuarios: function (sub) { window.USUARIOS.vista(sub); },
-    bitacora: function () { window.BITACORA.vista(); },
+    /* 07/10 · estas tres usan datos que ya no viajan con el inicio: si aún no llegan, esqueleto y se esperan */
+    configuracion: function (sub) { conDatos(function () { window.CONFIG.vista(sub); }); },
+    usuarios: function (sub) { conDatos(function () { window.USUARIOS.vista(sub); }); },
+    bitacora: function () {
+      if (ARRANQUE && ARRANQUE.bitacora) return window.BITACORA.vista();
+      var marca = location.hash;
+      var quitar = K.piezas.esqueletos ? K.piezas.esqueletos.poner(app, { forma: 'ficha', cuantos: 2, espera: 'Trayendo la bitácora' }) : function () {};
+      traerBitacora(false).then(function () { quitar(); if (location.hash === marca) window.BITACORA.vista(); },
+        function (e) { quitar(); if (location.hash === marca && !(e && e.codigo === 'CANCELADA')) app.appendChild(errorCaja(e, enrutar)); });
+    },
     /* 10.3 · recordatorios y notificación final (antes scripts sueltos) */
     recordatorios: function () { window.RECORDATORIOS.vista(); },
     /* 10.4 · soporte profesional */
@@ -560,12 +637,16 @@
   }
 
   function cifrasDe(d) {
+    /* 07/10 · con el inicio ligero las cifras de usuarios, supervisores, festivos,
+       bitácora y guías vienen contadas por el CORE; con los datos ya en la app se
+       cuentan aquí (así un cambio guardado se ve sin volver a pedir nada) */
+    var R = (!d.usuarios && d.resumen) ? d.resumen : null;
     var us = d.usuarios || [];
     var act = us.filter(function (u) { return u.estado === 'ACTIVO'; });
     var hoy = hoyTexto();
     var sup = d.supervisores || { lista: [], huerfanos: [] };
     var mant = d.mantenimiento || {};
-    return {
+    var c = {
       activos: act.length,
       bloqueados: us.filter(function (u) { return u.bloqueado; }).length,
       sinCelular: act.filter(function (u) { return !u.telefono; }).length,
@@ -581,8 +662,12 @@
       sopReabiertos: d.soporte ? d.soporte.reabiertos || 0 : 0,
       sopPendientes: d.soporte ? d.soporte.pendientes || 0 : 0,
       /* 10.5 · solo si el CORE ya lo tenía calculado hoy (no frena el arranque) */
-      atrasados: d.atrasos ? d.atrasos.total || 0 : 0
+      atrasados: d.atrasos ? d.atrasos.total || 0 : 0,
+      sinGuia: (d.cfg || []).filter(function (it) { return /^GUIA_/.test(it.llave) && !String(it.valor || '').trim(); }).length
     };
+    if (R) ['activos', 'bloqueados', 'sinCelular', 'sinCorreo', 'claveDoc', 'cambiosHoy', 'festivosAlDia', 'supSinGrupo', 'huerfanos', 'sinGuia'].forEach(function (k) { if (R[k] !== undefined) c[k] = R[k]; });
+    else if (!d.bitacora && d.resumen) c.cambiosHoy = d.resumen.cambiosHoy || 0;
+    return c;
   }
 
   function hoyTexto() {
@@ -602,7 +687,7 @@
       K.icono('recargar', 16) + '<span>Refrescar</span></button>');
     ref.addEventListener('click', function () {
       ref.disabled = true; ref.classList.add('kit-ocupado');
-      C.recargar().then(function () {
+      C.recargar('inicio').then(function () {
         pintarResumen(destino, acc);
         K.aviso('Al día.', 'ok', 2000);
       }, function (e) { K.aviso((e && e.message) || 'No se pudo refrescar.', 'malo', 5000); ref.disabled = false; ref.classList.remove('kit-ocupado'); });
@@ -633,7 +718,7 @@
     if (n.sopPendientes) alertas.push(['aviso', 'salvavidas', n.sopPendientes + (n.sopPendientes === 1 ? ' soporte pendiente sin responder' : ' soportes pendientes sin responder'), 'soportes']);
     if (n.sinCelular) alertas.push(['aviso', 'telefono', n.sinCelular + (n.sinCelular === 1 ? ' usuario activo sin celular: no recibe ni recupera la contraseña' : ' usuarios activos sin celular: no reciben ni recuperan la contraseña'), 'usuarios/SIN_CELULAR']);
     /* guías rápidas: una app sin PDF deja su "Descargar guía rápida" sin nada que bajar */
-    var sinGuia = ((ARRANQUE && ARRANQUE.cfg) || []).filter(function (it) { return /^GUIA_/.test(it.llave) && !String(it.valor || '').trim(); }).length;
+    var sinGuia = n.sinGuia;
     if (sinGuia) alertas.push(['info', 'pdf', sinGuia + (sinGuia === 1 ? ' guía rápida sin PDF publicado' : ' guías rápidas sin PDF publicado'), 'configuracion/guias']);
     if (n.sinCorreo) alertas.push(['info', 'sobre', n.sinCorreo + (n.sinCorreo === 1 ? ' usuario activo sin correo (no recibe avisos por correo)' : ' usuarios activos sin correo (no reciben avisos por correo)'), 'usuarios/SIN_CORREO']);
     var t = K.nodo('<div class="ad-alertas"></div>');

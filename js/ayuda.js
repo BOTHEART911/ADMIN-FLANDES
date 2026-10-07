@@ -91,6 +91,8 @@
         botones: [
           { texto: '¿Qué cambié hoy?', responde: function () {
               var d = new Date(), hoy = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
+              /* 07/10 · la bitácora ya no viaja con el inicio: si no se ha abierto, el conteo del CORE */
+              if (!A().bitacora && A().resumen) { var nh = A().resumen.cambiosHoy || 0; return nh ? 'Hoy van **' + nh + '** cambios. Ábrelos en la **BITÁCORA**.' : 'Hoy no se ha cambiado nada.'; }
               var l = (A().bitacora || []).filter(function (b) { return String(b.fecha).indexOf(hoy) === 0; });
               return l.length ? listaCorta(l, function (b) { return '· ' + String(b.fecha).slice(11, 16) + ' **' + b.accion + '** ' + b.objeto; }) : 'Hoy no se ha cambiado nada.';
             } },
