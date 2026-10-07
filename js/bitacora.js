@@ -18,10 +18,11 @@
 
   var K = window.KIT;
   var C = {};
-  var F = { app: '', accion: '', buscar: '', desde: '', hasta: '' };
+  var F = { app: '', accion: '', buscar: '', desde: '', hasta: '', quien: '' };   /* 06/10 · quien = documento de la persona */
   var TODA = null;           /* la bitácora entera, si se pidió */
 
   function O() { return window.OFICINA; }
+  function dg(v) { return String(v || '').replace(/\D/g, ''); }
   function D() { return C.datos ? C.datos() : {}; }
   function filas() { return TODA || D().bitacora || []; }
 
@@ -41,6 +42,7 @@
     var q = K.norm(F.buscar);
     return filas().filter(function (b) {
       if (F.app && b.app !== F.app) return false;
+      if (F.quien && dg(b.documento) !== F.quien) return false;
       if (F.accion && grupoAccion(b.accion) !== F.accion) return false;
       var d = iso(b.fecha);
       if (F.desde && d < F.desde) return false;
@@ -73,8 +75,8 @@
     caja.appendChild(fechas);
     if (K.piezas.fechas) setTimeout(function () { K.piezas.fechas.montar(fechas); }, 0);
 
-    var zA = K.nodo('<div class="ad-pastillas"></div>'), zX = K.nodo('<div class="ad-pastillas"></div>');
-    caja.appendChild(zA); caja.appendChild(zX);
+    var zA = K.nodo('<div class="ad-pastillas"></div>'), zX = K.nodo('<div class="ad-pastillas"></div>'), zQ = K.nodo('<div class="ad-pastillas"></div>');
+    caja.appendChild(zQ); caja.appendChild(zA); caja.appendChild(zX);
 
     var acc = K.nodo('<div class="ct-acc ad-exp"></div>');
     var bPdf = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('pdf', 16) + ' PDF</button>');
@@ -96,8 +98,15 @@
         .then(function (r) { TODA = r.lista || []; pastillas(); pintar(); }, function (e) { bTodo.disabled = false; bTodo.classList.remove('kit-ocupado'); K.aviso((e && e.message) || 'No se pudo.', 'malo', 6000); pintar(); });
     });
 
-    var pA, pX;
+    var pA, pX, pQ;
     function pastillas() {
+      /* 06/10 · MIS REGISTROS en ADMIN: lo que hizo cada persona (yo o la que escoja) */
+      zQ.innerHTML = '';
+      var gente = {};
+      filas().forEach(function (x) { if (dg(x.documento)) gente[dg(x.documento)] = x.nombre || x.documento; });
+      pQ = K.piezas.pastillas.montar(zQ, { etiqueta: 'Persona', opciones: [{ valor: '', texto: 'Todas las personas' }].concat(Object.keys(gente)
+        .sort(function (a, c) { return String(gente[a]).localeCompare(String(gente[c]), 'es'); }).map(function (d) { return { valor: d, texto: O().nombre(gente[d]) }; })),
+        valor: F.quien, alCambiar: function (v) { F.quien = v; pintar(); } });
       zA.innerHTML = ''; zX.innerHTML = '';
       var apps = {}, acciones = {};
       filas().forEach(function (x) { apps[x.app] = 1; acciones[grupoAccion(x.accion)] = 1; });
@@ -110,12 +119,15 @@
       var mA = { '': 0 }, mX = { '': 0 };
       filas().forEach(function (x) { mA['']++; mA[x.app] = (mA[x.app] || 0) + 1; var g = grupoAccion(x.accion); mX['']++; mX[g] = (mX[g] || 0) + 1; });
       pA.conteos(mA); pX.conteos(mX);
+      var mQ = { '': 0 };
+      filas().forEach(function (x) { mQ['']++; var d = dg(x.documento); if (d) mQ[d] = (mQ[d] || 0) + 1; });
+      if (pQ) pQ.conteos(mQ);
       var l = filtradas();
       var tot = TODA ? TODA.length : (D().bitacoraTotal || filas().length);
       total.textContent = K.numero(l.length) + (l.length === 1 ? ' cambio' : ' cambios') + ' con estos filtros · ' + K.numero(filas().length) + ' cargados de ' + K.numero(tot) + '.';
       if (!TODA && tot > filas().length) { if (!bTodo.parentNode) acc.appendChild(bTodo); } else if (bTodo.parentNode) bTodo.parentNode.removeChild(bTodo);
       zona.innerHTML = '';
-      if (!l.length) { zona.appendChild(O().vacio(filas().length ? 'Ningún cambio con esos filtros.' : 'Todavía no hay cambios apuntados. Aparecen apenas guardes algo desde ADMIN.', filas().length ? function () { F = { app: '', accion: '', buscar: '', desde: '', hasta: '' }; b.inp.value = ''; iDe.value = ''; iHa.value = ''; pastillas(); pintar(); } : null)); return; }
+      if (!l.length) { zona.appendChild(O().vacio(filas().length ? 'Ningún cambio con esos filtros.' : 'Todavía no hay cambios apuntados. Aparecen apenas guardes algo desde ADMIN.', filas().length ? function () { F = { app: '', accion: '', buscar: '', desde: '', hasta: '', quien: '' }; b.inp.value = ''; iDe.value = ''; iHa.value = ''; pastillas(); pintar(); } : null)); return; }
       var dia = '';
       l.slice(0, 300).forEach(function (x) {
         var d = String(x.fecha).slice(0, 10);
@@ -184,12 +196,16 @@
     ];
     var rango = (F.desde || F.hasta) ? 'Del ' + (O().fecha(F.desde) || 'inicio') + ' al ' + (O().fecha(F.hasta) || 'hoy') : 'Toda la bitácora cargada';
     var ex = K.piezas.exportar;
-    if (que === 'xlsx') { ex.aExcel('Bitacora ADMIN', cols, l); return; }
+    /* 06/10 · el nombre dice qué es, de quién y de cuándo: Bitacora_ADMIN_OSCAR_POLANIA_01-10-2026_a_06-10-2026 */
+    var de = F.quien && l[0] ? O().nombre(l[0].nombre) : '';
+    var cuando = (F.desde ? O().fecha(F.desde).replace(/\//g, '-') : '') + (F.hasta && F.hasta !== F.desde ? ' a ' + O().fecha(F.hasta).replace(/\//g, '-') : '');
+    var nombreArch = ['Bitacora ADMIN', de, cuando].filter(Boolean).join(' ');
+    if (que === 'xlsx') { ex.aExcel(nombreArch, cols, l); return; }
     var filasPdf = l.map(function (x) {
       var d = diferencias(x.antes, x.despues).map(function (z) { return (z.k ? z.k + ': ' : '') + (z.a || '(vacío)') + ' → ' + (z.b || '(vacío)'); }).join('\n');
       return { fecha: x.fecha, nombre: O().nombre(x.nombre), app: x.app, accion: x.accion, objeto: x.objeto, cambio: d, motivo: x.motivo, dia: String(x.fecha).slice(0, 10) };
     });
-    ex.aPDF('Bitácora de ADMIN', [
+    ex.aPDF(nombreArch, [
       { campo: 'fecha', titulo: 'Fecha' }, { campo: 'nombre', titulo: 'Quién' }, { campo: 'app', titulo: 'App' },
       { campo: 'objeto', titulo: 'Sobre qué' }, { campo: 'cambio', titulo: 'Cambio', largo: true }, { campo: 'motivo', titulo: 'Motivo', largo: true }
     ], filasPdf, {
@@ -212,7 +228,9 @@
   window.BITACORA = {
     configurar: function (c) { C = c || {}; },
     vista: vista,
-    olvidar: function () { F = { app: '', accion: '', buscar: '', desde: '', hasta: '' }; TODA = null; },
+    olvidar: function () { F = { app: '', accion: '', buscar: '', desde: '', hasta: '', quien: '' }; TODA = null; },
+    /* 06/10 · "Mis registros" del menú: la bitácora con solo lo de esta persona */
+    soloDe: function (documento) { F.quien = dg(documento); },
     _filtradas: filtradas, _diferencias: diferencias, _grupo: grupoAccion
   };
 }());

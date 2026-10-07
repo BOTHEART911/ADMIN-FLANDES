@@ -325,6 +325,10 @@
     var menu = [{ texto: 'Foto de perfil', al: abrirFoto }];
     menu.push({ texto: 'Actualizar contraseña', al: function () { K.piezas.sesion.cambiarClave(); } });
     menu.push({ texto: 'Instalar la app', al: function () { K.piezas.instalar.abrir(); } });
+    if (puede('bitacora')) menu.push({ texto: 'Mis registros (descargar lo que hice)', al: function () {
+      if (window.BITACORA && window.BITACORA.soloDe) window.BITACORA.soloDe(YO && YO.documento);
+      irA('bitacora');
+    } });
     if (K.piezas.guia) menu.push(K.piezas.guia.opcion('ADMIN'));
     menu.push({ texto: 'Soporte', al: soporte });
     menu.push({ texto: 'Cerrar sesión', al: salir, peligro: true });
@@ -490,7 +494,7 @@
       function () { irA('recordatorios'); }));
     if (puede('soportes')) tE.push(acc.soportes = acceso('SOPORTES', 'Las solicitudes de las siete apps: responder, cargar a nombre de alguien, estrellas y reabiertos', 'img/chat.webp',
       function () { irA('soportes'); }));
-    if (puede('bitacora')) tE.push(acc.bitacora = acceso('BITÁCORA', 'Cada cambio hecho desde aquí: quién, cuándo, antes, después y motivo', 'img/pdf.webp',
+    if (puede('bitacora')) tE.push(acc.bitacora = acceso('BITÁCORA · MIS REGISTROS', 'Cada cambio hecho desde aquí: quién, cuándo, antes y después. Escoge la persona y descárgalo en PDF o Excel', 'img/pdf.webp',
       function () { irA('bitacora'); }));
     if (tE.length) bloque('ECOSISTEMA', tE);
 
