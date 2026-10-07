@@ -44,8 +44,8 @@
   var CANALES = [
     { v: '', t: 'Por defecto' }, { v: 'WHATSAPP', t: 'WhatsApp' }, { v: 'CORREO', t: 'Correo' }, { v: 'AMBOS', t: 'Los dos' }
   ];
-  var TONO = { BORRADOR: '', INGRESADA: 'aviso', REPORTADA: 'aviso', DEVUELTA: 'malo', 'REVISADA POR SUPERVISOR': 'aviso',
-               APROBADA: 'ok', CERRADA: 'ok', 'ORDEN DE PAGO': 'ok', EGRESO: 'ok', PAGADA: 'ok' };
+  var TONO = { BORRADOR: '', INGRESADA: 'aviso', REPORTADA: 'aviso', DEVUELTA: 'malo', INCOMPLETA: 'malo', 'REVISADA POR SUPERVISOR': 'aviso',
+               APROBADA: 'ok', 'PLAN DE PAGOS': 'aviso', CERRADA: 'ok', 'ORDEN DE PAGO': 'ok', EGRESO: 'ok', PAGADA: 'ok' };
 
   function O() { return window.OFICINA; }
   function nombre(s) { return O() ? O().nombre(s) : String(s || ''); }
