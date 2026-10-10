@@ -81,8 +81,9 @@
     var acc = K.nodo('<div class="ct-acc ad-exp"></div>');
     var bPdf = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('pdf', 16) + ' PDF</button>');
     var bXls = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('hoja', 16) + ' Excel</button>');
+    var bGer = K.nodo('<button type="button" class="kit-btn kit-btn--plano rp-gerencial">' + K.icono('grafica', 16) + ' Informe gerencial</button>');
     var bTodo = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('descargar', 16) + ' Traer toda la bitácora</button>');
-    acc.appendChild(bPdf); acc.appendChild(bXls);
+    acc.appendChild(bPdf); acc.appendChild(bXls); acc.appendChild(bGer);
     caja.appendChild(acc);
     var total = K.nodo('<p class="formulario__nota ad-total"></p>');
     caja.appendChild(total);
@@ -92,6 +93,17 @@
 
     bPdf.addEventListener('click', function () { exportar('pdf'); });
     bXls.addEventListener('click', function () { exportar('xlsx'); });
+    /* 10/10 · si falta parte de la bitácora, se trae UNA vez (la misma de "Traer toda") y queda en memoria */
+    bGer.addEventListener('click', function () {
+      if (bGer.disabled) return;
+      bGer.disabled = true; bGer.classList.add('kit-ocupado');
+      var tot = TODA ? TODA.length : (D().bitacoraTotal || filas().length);
+      var trae = (!TODA && tot > filas().length) ? O().leer('bitacora').then(function (r) { TODA = r.lista || []; pastillas(); pintar(); }) : Promise.resolve();
+      trae.then(function () { return gerencial(); })
+        .then(function (r) { if (r) K.aviso('Informe gerencial descargado (' + r.paginas + ' páginas).', 'ok', 3500); },
+              function (e) { K.aviso((e && e.message) || 'No se pudo armar el informe.', 'malo', 6000); })
+        .then(function () { bGer.disabled = false; bGer.classList.remove('kit-ocupado'); });
+    });
     bTodo.addEventListener('click', function () {
       bTodo.disabled = true; bTodo.classList.add('kit-ocupado');
       K.piezas.esqueletos.mientras(zona, O().leer('bitacora'), { forma: 'ficha', cuantos: 2, espera: 'Trayendo toda la bitácora' })
@@ -225,12 +237,56 @@
     });
   }
 
+  /* ══════════════ 10/10 · INFORME GERENCIAL ══════════════
+     Lo hecho desde ADMIN en el periodo, de la persona escogida (o de todas),
+     sin filtros de app, acción ni búsqueda: el panorama completo. */
+  function tonoAccion(a) { return /INACTIVO|RETIRADO|SUSPENDIDO|BORRADO|ELIMINADO/.test(a) ? 'malo' : (/NUEVO|REACTIVADO|ACTIVO|CREADO/.test(a) ? 'ok' : 'info'); }
+  function specGerencial() {
+    var regs = filas().filter(function (b) {
+      var d = iso(b.fecha);
+      return d && (!F.desde || d >= F.desde) && (!F.hasta || d <= F.hasta) && (!F.quien || dg(b.documento) === F.quien);
+    });
+    var persona = F.quien ? O().nombre((regs[0] || {}).nombre || '') || 'Sin nombre' : 'Todas las personas';
+    var cuando = (F.desde ? O().fecha(F.desde).replace(/\//g, '-') : '') + (F.hasta && F.hasta !== F.desde ? ' a ' + O().fecha(F.hasta).replace(/\//g, '-') : '');
+    var gente = {};
+    if (!F.quien) regs.forEach(function (b) { var k = O().nombre(b.nombre) || 'Sistema'; gente[k] = (gente[k] || 0) + 1; });
+    return {
+      app: 'Administración (ADMIN)', persona: persona, desde: F.desde, hasta: F.hasta,
+      nombre: ['Informe gerencial ADMIN', persona, cuando].filter(Boolean).join(' '),
+      palabra: ['cambio', 'cambios'],
+      etiquetas: { tipo: 'Acción', categoria: 'Aplicativo', sujeto: 'Registro afectado', sujetos: 'registros afectados' },
+      tonos: { ok: 'Altas y activaciones', malo: 'Bajas e inactivaciones', info: 'Ajustes' },
+      registros: regs.map(function (b) {
+        return { fecha: iso(b.fecha), hora: String(b.fecha || '').slice(11, 16), tipo: b.accion || 'OTRO', tono: tonoAccion(String(b.accion || '')),
+                 categoria: b.app === 'CORE' ? 'Ecosistema' : (b.app || ''), sujeto: String(b.objeto || '').slice(0, 60) };
+      }),
+      secciones: [{
+        titulo: 'Áreas de administración',
+        intro: 'Los cambios agrupados por área: usuarios, supervisores, festivos, avisos y configuración.' + (F.quien ? '' : ' Y quién los hizo.'),
+        graficas: [
+          { titulo: 'Cambios por área', tipo: 'barrasH', titular: false,
+            datos: (function () { var m = {}; regs.forEach(function (b) { var g = grupoAccion(b.accion); m[g] = (m[g] || 0) + 1; });
+                                  return Object.keys(m).map(function (k) { return { etiqueta: k, valor: m[k] }; }).sort(function (a, c) { return c.valor - a.valor; }); }()) },
+          { titulo: 'Cambios por persona', tipo: 'barrasH', titular: false,
+            datos: Object.keys(gente).map(function (k) { return { etiqueta: k, valor: gente[k] }; }).sort(function (a, c) { return c.valor - a.valor; }) }
+        ]
+      }]
+    };
+  }
+  function gerencial() {
+    var ex = K.piezas.exportar;
+    if (!ex || !ex.aGerencial) { K.aviso('El informe gerencial no está disponible en esta versión. Recarga la app.', 'aviso', 5000); return Promise.resolve(null); }
+    var sp = specGerencial();
+    if (!sp.registros.length) { K.aviso('No hay cambios en ese periodo para armar el informe.', 'aviso', 4000); return Promise.resolve(null); }
+    return ex.aGerencial(sp);
+  }
+
   window.BITACORA = {
     configurar: function (c) { C = c || {}; },
     vista: vista,
     olvidar: function () { F = { app: '', accion: '', buscar: '', desde: '', hasta: '', quien: '' }; TODA = null; },
     /* 06/10 · "Mis registros" del menú: la bitácora con solo lo de esta persona */
     soloDe: function (documento) { F.quien = dg(documento); },
-    _filtradas: filtradas, _diferencias: diferencias, _grupo: grupoAccion
+    _filtradas: filtradas, _diferencias: diferencias, _grupo: grupoAccion, _gerencial: specGerencial
   };
 }());

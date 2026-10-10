@@ -3429,3 +3429,6 @@ button.so-per:hover { border-color: var(--k-marca); background: rgba(var(--k-mar
   margin: 4px 0 12px; padding: 10px 12px; border: 1px dashed var(--k-linea); border-radius: var(--k-r-md); }
 .ad-total__t { margin: 0; display: flex; align-items: center; gap: 6px; font-size: .9rem; color: var(--k-tinta); }
 .ad-fecha__n { margin: -4px 0 10px; }
+
+/* 10/10 · botón INFORME GERENCIAL (Mis registros): el ícono en dorado lo distingue de PDF y Excel */
+.rp-gerencial svg { color: #c99e2e; }
