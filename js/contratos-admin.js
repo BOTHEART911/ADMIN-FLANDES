@@ -130,7 +130,17 @@
     /* cuentas */
     var sc = K.nodo('<section class="kit-tarjeta grupo ad-ctr"><h3 class="grupo__t">' + K.icono('moneda', 15) + ' Cuentas del contrato (' + a.cuentas.length + ')</h3></section>');
     if (!a.cuentas.length) sc.appendChild(K.nodo('<p class="formulario__nota">Todavía no ha radicado cuentas de este contrato.</p>'));
-    else sc.appendChild(K.nodo('<p class="formulario__nota">Cambiar el estado aquí es <b>en silencio</b>: no le llega nada a nadie. Queda en la traza de la cuenta con tu nombre y en la bitácora.</p>'));
+    else {
+      sc.appendChild(K.nodo('<p class="formulario__nota">Cambiar el estado aquí es <b>en silencio</b>: no le llega nada a nadie. Queda en la traza de la cuenta con tu nombre y en la bitácora.</p>'));
+      /* 10/10 · total de informes: uno solo para todas las cuentas del contrato */
+      var totales = a.cuentas.map(function (c) { return String(c.total || ''); }).filter(function (x, i, arr) { return x && arr.indexOf(x) === i; });
+      var zt = K.nodo('<div class="ad-total"><p class="ad-total__t">' + K.icono('hoja', 15) + ' <span>Total de informes: <b></b></span></p></div>');
+      zt.querySelector('b').textContent = totales.length ? totales.join(' / ') + (totales.length > 1 ? ' (no coinciden)' : '') : 'sin dato';
+      var bt = K.nodo('<button type="button" class="kit-btn kit-btn--plano ad-mini">' + K.icono('lapiz', 13) + ' Editar total</button>');
+      bt.addEventListener('click', function () { editarTotal(d, a, f, totales); });
+      zt.appendChild(bt);
+      sc.appendChild(zt);
+    }
     a.cuentas.slice().reverse().forEach(function (cu) {
       var t = K.nodo('<article class="ad-cta"><div class="ad-cta__cab"><b></b><span class="ct-marca ad-cta__est"></span></div>' +
         '<p class="ad-cta__p"></p><p class="ad-cta__traza"></p></article>');
@@ -209,6 +219,33 @@
       } }] });
   }
 
+  /* ══════════════ 10/10 · total de informes del contrato ══════════════ */
+
+  function editarTotal(d, a, f, totales) {
+    var maxInf = a.cuentas.reduce(function (m, c) { return Math.max(m, Number(c.informe) || 0); }, 0);
+    var fo = K.nodo('<div class="formulario ad-form">' +
+      '<p class="formulario__nota formulario__nota--fuerte">Se cambia en <b>' + a.cuentas.length + (a.cuentas.length === 1 ? ' cuenta' : ' cuentas') +
+      '</b> de este contrato (columna TOTAL INFORMES de cada una). No puede ser menor que ' + maxInf + ', la cuenta más alta que ya existe.</p>' +
+      '<label class="campo"><span>Total de informes</span><input type="text" inputmode="numeric" maxlength="2"></label>' +
+      '<label class="campo"><span>Motivo (queda en la bitácora)</span><input type="text" maxlength="300" placeholder="Ej: el clausulado dice 6 pagos"></label></div>');
+    var ins = fo.querySelectorAll('input');
+    ins[0].value = totales.length === 1 ? totales[0] : '';
+    ins[0].addEventListener('input', function () { ins[0].value = ins[0].value.replace(/\D/g, ''); });
+    var m = O().modal({ titulo: 'Total de informes · contrato ' + ((d.contrato || {}).contrato || ''), cuerpo: fo,
+      botones: [{ texto: 'Cancelar', al: function () { m.cerrar(); } }, { texto: 'Guardar', icono: 'check', marca: true, al: function () {
+        var n = Number(ins[0].value);
+        if (!(n >= 1 && n <= 60)) { ins[0].focus(); K.aviso('Escribe un total entre 1 y 60.', 'aviso', 4000); return; }
+        if (n < maxInf) { ins[0].focus(); K.aviso('Ya existe la cuenta ' + maxInf + ': el total no puede ser menor.', 'aviso', 5000); return; }
+        if (ins[1].value.trim().length < 5) { ins[1].focus(); K.aviso('Escribe el motivo.', 'aviso', 4000); return; }
+        m.botones[1].disabled = true;
+        pedir('cuentasTotal', { idContrato: d.idContrato, total: n, motivo: ins[1].value.trim() }, {
+          titulo: 'Guardando el total', sub: nombre(f.nombre), pasos: ['En todas sus cuentas', 'Apuntando en la bitácora'],
+          listo: { titulo: 'Total al día', paso: n + ' informes' }
+        }).then(function () { m.cerrar(); aLaFicha(d.idContrato); }, function (e) { m.botones[1].disabled = false; mal(e); });
+      } }] });
+    setTimeout(function () { ins[0].focus(); }, 120);
+  }
+
   /* ══════════════ 10.4 · rehacer los documentos de la cuenta ══════════════ */
 
   /* 07/10 · lo que se está rehaciendo de fondo: 'idContrato|informe' -> true */
@@ -229,9 +266,20 @@
       (sup.length ? ' y ' + sup.join(' y ') + ' (firmado' + (sup.length > 1 ? 's' : '') + ' a nombre del supervisor del contrato, con el mismo QR y el mismo enlace)' : '') +
       ' con los datos que hay <b>hoy</b> en la hoja. Los anteriores se <b>eliminan definitivamente</b>. La cuenta no cambia de estado.</p>' +
       '<label class="campo"><span>Motivo (le llega al contratista y queda en el soporte)</span><textarea rows="3" maxlength="500" placeholder="Ej: se corrigió el valor de la planilla en la hoja"></textarea></label>' +
-      '<label class="op-check cf-sw"><input type="checkbox" checked><span>Avisar a ' + K.esc(nombre(f.nombre)) + ' (push y WhatsApp) para que lo revise y califique el soporte</span></label>' +
+      '<label class="op-check cf-sw ad-fecha"><input type="checkbox" checked data-k="fecha"><span>Conservar fecha de radicación' + (cu.radicada ? ' (' + K.esc(cu.radicada) + ')' : '') + '</span></label>' +
+      '<p class="formulario__nota ad-fecha__n" hidden></p>' +
+      '<label class="op-check cf-sw"><input type="checkbox" checked data-k="avisar"><span>Avisar a ' + K.esc(nombre(f.nombre)) + ' (push y WhatsApp) para que lo revise y califique el soporte</span></label>' +
       '<p class="formulario__nota">Se hace <b>de fondo</b>: puedes seguir trabajando y te aviso cuando quede listo. Queda en SOPORTES como soporte hecho y en la bitácora.</p></div>');
     var txt = fo.querySelector('textarea');
+    /* 10/10 · desmarcado: la fecha de hoy (antes de las 4 p. m.) o el siguiente hábil permitido */
+    var chF = fo.querySelector('[data-k=fecha]'), notaF = fo.querySelector('.ad-fecha__n');
+    var hoyF = (d.admin && d.admin.fechaHoy) || '';
+    chF.addEventListener('change', function () {
+      notaF.hidden = chF.checked;
+      notaF.innerHTML = hoyF
+        ? 'Los documentos saldrán con fecha de radicación <b>' + K.esc(hoyF) + '</b> (hoy antes de las 4:00 p. m.; si no, el siguiente día hábil, sin los últimos días del mes configurados). Se cambia también en la hoja.'
+        : 'Hoy no hay fecha de radicación disponible: deja marcada la casilla.';
+    });
     var m = O().modal({ titulo: 'Rehacer documentos · cuenta ' + cu.informe, cuerpo: fo,
       botones: [{ texto: 'Cancelar', al: function () { m.cerrar(); } }, { texto: 'Rehacer', icono: 'girar', marca: true, al: function () {
         var mot = txt.value.trim();
@@ -243,8 +291,9 @@
         m.botones[1].disabled = true;
         if (boton) enCurso(boton);
         K.ocupado = true;
+        if (!chF.checked && !hoyF) { K.aviso('Hoy no hay fecha de radicación disponible: deja marcada la casilla.', 'aviso', 6000); return; }
         var pedido = K.pedir('documentosRehacer', { idContrato: d.idContrato, fila: cu.fila, informe: cu.informe, motivo: mot,
-          avisar: fo.querySelector('input[type=checkbox]').checked }, { ms: 330000 });
+          avisar: fo.querySelector('[data-k=avisar]').checked, conservarFecha: chF.checked }, { ms: 330000 });
         m.cerrar();
         K.aviso('Rehaciendo los documentos de la cuenta ' + cu.informe + ' de ' + nombre(f.nombre) + '. Puedes seguir trabajando: te aviso al terminar.', 'ok', 6000);
         pedido.then(function (r) {
@@ -255,7 +304,7 @@
           /* solo se repinta si la persona sigue en esa ficha: nunca se la saca de donde está */
           if (location.hash === '#/contratista/' + encodeURIComponent(d.idContrato) && C.enrutar) C.enrutar();
           K.aviso('Cuenta ' + (r.informe || cu.informe) + ' de ' + nombre(f.nombre) + ': se rehicieron ' + r.documentos.length + (r.documentos.length === 1 ? ' documento' : ' documentos') +
-            ' (' + r.documentos.join(', ') + ') · soporte ' + r.soporte.id +
+            ' (' + r.documentos.join(', ') + ')' + (r.fechaCambio ? ' con fecha de radicación ' + r.fechaRadicacion : '') + ' · soporte ' + r.soporte.id +
             (r.errores && r.errores.length ? '. No salieron: ' + r.errores.join(' · ') : '.'), r.errores && r.errores.length ? 'aviso' : 'ok', 12000);
         }, function (e) {
           delete EN_CURSO[llave];

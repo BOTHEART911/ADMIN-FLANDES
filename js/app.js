@@ -400,7 +400,7 @@
       irA('bitacora');
     } });
     if (K.piezas.guia) menu.push(K.piezas.guia.opcion('ADMIN'));
-    menu.push({ texto: 'Soporte', al: soporte });
+    /* 10/10 · ADMIN no se pide soporte a sí mismo (Oss): sin opción Soporte */
     menu.push({ texto: 'Cerrar sesión', al: salir, peligro: true });
     K.piezas.banner.montar({
       titulo: 'Admin Flandes',
@@ -614,8 +614,8 @@
       tA.push(acc.mant = accesoIcono('MANTENIMIENTO', 'Cierra una app o todas con un mensaje, mira la versión publicada de cada una', 'candado',
         function () { irA('configuracion/mantenimiento'); }));
     }
-    tA.push(acceso('SOPORTE', 'Cuéntanos qué falla, con hasta 3 capturas', 'img/comunicaciones.webp', soporte));
-    bloque('ATAJOS', tA);
+    /* 10/10 · sin SOLICITAR SOPORTE en ADMIN: los soportes se atienden en SOPORTES */
+    if (tA.length) bloque('ATAJOS', tA);
 
     var sRes = K.nodo('<section class="bloque" aria-label="Resumen"><h3 class="bloque__t">LO QUE PIDE ATENCIÓN</h3></section>');
     var destino = K.nodo('<section class="resumen"></section>');
