@@ -56,6 +56,7 @@
 
   function vista() {
     var caja = K.nodo('<div class="kit-ancho vista ct ad"></div>');
+    if (K.piezas.exportar && K.piezas.exportar.prepararGerencial) K.piezas.exportar.prepararGerencial();   /* 10/10 · informe gerencial listo antes del toque */
     C.app.appendChild(caja);
     O().cabecera(caja, 'documento', 'BITÁCORA DE CAMBIOS',
       'Todo lo que se cambia desde ADMIN: configuración, festivos, avisos, supervisores y usuarios. Las llaves secretas se apuntan tapadas y las contraseñas nunca se escriben.');
