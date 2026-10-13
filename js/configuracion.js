@@ -145,6 +145,8 @@
     CONTRATO_ADICION: 'Adición del contrato', CONTRATO_CESION: 'Cesión del contrato', CONTRATO_SUSPENSION: 'Suspensión del contrato',
     REQUERIMIENTO: 'Requerimiento de la oficina', CONTRATO_OTROSI: 'Otrosí del contrato', PLAN_POR_CORREGIR: 'Plan de pagos por corregir',
     SOLICITUD_COMUNICACIONES: 'Solicitud a Comunicaciones',
+    /* 13/10 · botón NOTIFICAR del detalle: sale del WhatsApp del ADMIN/DEV, no del bot */
+    COMUNICACIONES_COPIA: 'Comunicaciones · copia de la asignación (Notificar)',
     CONTRATO_NOTIFICADO: 'Notificación final (descargar la certificación)',
     SOPORTE_RESUELTO: 'Soporte resuelto (calificar)', DOCUMENTOS_REHECHOS: 'Documentos de la cuenta rehechos', CUENTA_ATRASADA: 'Cuenta atrasada',
     /* 26/09 · solicitudes a Contratación. La NUEVA es el mensaje al GRUPO de Contratación */
@@ -157,6 +159,9 @@
   function esAvisoBot(t) { return t === 'BOT_DESCONECTADO' || t === 'BOT_RECONECTADO'; }
   /* 01/10 · el texto que va al GRUPO de WhatsApp del supervisor: solo WhatsApp */
   function esAvisoGrupo(t) { return t === 'GRUPO_DEVUELTA_CONTRATACION'; }
+  /* 13/10 · la copia de NOTIFICAR la abre el WhatsApp del dispositivo: solo texto, sin canales */
+  function esAvisoNativo(t) { return t === 'COMUNICACIONES_COPIA'; }
+  var MARCADORES_COPIA = '{nombre} {codigo} {evento} {entrega} {quien}';
   /* 01/10 · los avisos de la decisión de Contratación: firma el revisor */
   var AVISOS_CONTRATACION = ['CUENTA_APROBADA', 'CUENTA_DEVUELTA_CONTRATACION', 'GRUPO_DEVUELTA_CONTRATACION'];
   var MARCADORES_CONTRATACION = '{revisor} {contratista} {nombre} {contrato} {informe} {total} {cuenta} {motivo} {motivo_negrilla} {observacion} {supervisor} {fecha}';
@@ -1090,14 +1095,15 @@
   function editarAviso(tipo) {
     var a = D().avisos, p = copia(a.plantillas[tipo] || {}), c = (a.canales[tipo] || []).slice();
     p.push = p.push || {};
-    var bot = esAvisoBot(tipo), grupo = esAvisoGrupo(tipo), deCont = AVISOS_CONTRATACION.indexOf(tipo) >= 0;
+    var bot = esAvisoBot(tipo), nativo = esAvisoNativo(tipo), grupo = esAvisoGrupo(tipo) || nativo, deCont = AVISOS_CONTRATACION.indexOf(tipo) >= 0;
     if (bot) c = ['CORREO'];
     if (grupo) c = ['WHATSAPP'];
     var f = K.nodo('<div class="formulario ad-form"></div>');
-    f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(bot ? MARCADORES_BOT : (deCont ? MARCADORES_CONTRATACION : MARCADORES)) + '</code>. El que no venga en el aviso se borra solo. Un texto que dejes <b>vacío</b> sale con el texto por defecto.' +
+    f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(bot ? MARCADORES_BOT : (nativo ? MARCADORES_COPIA : (deCont ? MARCADORES_CONTRATACION : MARCADORES))) + '</code>. El que no venga en el aviso se borra solo. Un texto que dejes <b>vacío</b> sale con el texto por defecto.' +
       (bot ? ' Este aviso sale <b>solo por correo</b> a los correos de la tarjeta <b>ALERTA DE BOT DESCONECTADO</b> (arriba).' : '') +
       (deCont ? ' Lo firma <b>{revisor}</b>: el usuario de Contratación que aprobó o devolvió. <b>{motivo}</b> pone cada motivo en su línea con “- ” y <b>{motivo_negrilla}</b> igual pero en negrilla.' : '') +
-      (grupo ? ' Este texto sale <b>solo por WhatsApp</b> al grupo del supervisor del contrato cuando Contratación devuelve una cuenta.' : '') + '</p>'));
+      (nativo ? ' Es el texto del botón <b>NOTIFICAR</b> del detalle de una solicitud EN PROCESO en COMUNICACIONES: se abre <b>tu WhatsApp</b> con el número del asignado y este texto listo para enviar (no sale por el bot). {quien} es quien notifica y {entrega} la fecha de entrega o publicación. Una línea que queda sin dato se quita sola.' :
+       (grupo ? ' Este texto sale <b>solo por WhatsApp</b> al grupo del supervisor del contrato cuando Contratación devuelve una cuenta.' : '')) + '</p>'));
     var can = K.nodo('<div class="cf-chips"></div>');
     ['PUSH', 'WHATSAPP', 'CORREO'].forEach(function (x) {
       var b = K.nodo('<button type="button" class="kit-pastilla" aria-pressed="' + (c.indexOf(x) >= 0) + '">' + K.icono(x === 'PUSH' ? 'campana' : (x === 'CORREO' ? 'sobre' : 'whatsapp'), 13) + ' ' + x + '</button>');
@@ -1118,7 +1124,7 @@
     }
     var iPT = (bot || grupo) ? null : campo('Push · título', p.push.titulo, false, 65);
     var iPC = (bot || grupo) ? null : campo('Push · cuerpo', p.push.cuerpo, true, 240);
-    var iWA = bot ? null : campo(grupo ? 'WhatsApp al grupo del supervisor' : 'WhatsApp', p.wa, true, 2000);
+    var iWA = bot ? null : campo(nativo ? 'WhatsApp (se abre en tu teléfono)' : (grupo ? 'WhatsApp al grupo del supervisor' : 'WhatsApp'), p.wa, true, 2000);
     var iAs = grupo ? null : campo('Correo · asunto', p.asunto, false, 150);
     var iCo = grupo ? null : campo('Correo · cuerpo', p.correo, true, 4000);
     var iMo = campo('Motivo del cambio (queda en la bitácora)', '', false, 300);
