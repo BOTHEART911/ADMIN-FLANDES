@@ -51,8 +51,23 @@
     SIN_CELULAR: ['Activos sin celular', function (u) { return u.estado === 'ACTIVO' && !u.telefono; }],
     SIN_CORREO: ['Activos sin correo', function (u) { return u.estado === 'ACTIVO' && !u.correo; }],
     CLAVE_DOC: ['Contraseña = documento', function (u) { return u.estado === 'ACTIVO' && u.claveEsDocumento; }],
-    DOC_REPETIDO: ['Documento repetido entre personas', function (u) { return !!otrasPersonas(u).length; }]
+    DOC_REPETIDO: ['Documento repetido entre personas', function (u) { return !!otrasPersonas(u).length; }],
+    SIN_CONTRATO: ['Usuarios SIN CONTRATO', function (u) { return u.sinContrato === true; }]
   };
+
+  /* 15/10 · SIN CONTRATO: su nombre no sale hacia el contratista ni en documentos
+     e informes oficiales; sale un texto genérico (editable aquí mismo). */
+  var SC_ROLES = { CONTRATACION: ['REVISOR'], CONTABILIDAD: ['CONTABLE'], TESORERIA: ['EGRESO', 'PAGO'] };
+  var SC_TEXTOS = { CONTRATACION: 'Usuario revisor', CONTRATACION_WA: 'Usuario Contratación', CONTABILIDAD: 'Usuario Contabilidad', EGRESO: 'Usuario Egreso', PAGO: 'Usuario Pagos' };
+  function scRoles() { return (D().sinContrato && D().sinContrato.roles) || SC_ROLES; }
+  function scTextos() { var t = (D().sinContrato && D().sinContrato.textos) || {}; var o = {}; Object.keys(SC_TEXTOS).forEach(function (k) { o[k] = t[k] || SC_TEXTOS[k]; }); return o; }
+  function aplicaSC(app, rol) { return (scRoles()[app] || []).some(function (r) { return tiene(rol, r); }); }
+  function textoSC(app, rol) {
+    var t = scTextos();
+    if (app === 'CONTRATACION') return t.CONTRATACION + ' (en WhatsApp: ' + t.CONTRATACION_WA + ')';
+    if (app === 'CONTABILIDAD') return t.CONTABILIDAD + '; la orden sale con la firma y el nombre del usuario OFICINA';
+    return tiene(rol, 'PAGO') && !tiene(rol, 'EGRESO') ? t.PAGO : t.EGRESO;
+  }
 
   function O() { return window.OFICINA; }
   function D() { return C.datos ? C.datos() : {}; }
@@ -111,6 +126,9 @@
     var nuevo = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' + K.icono('mas', 16) + ' Nuevo usuario</button>');
     nuevo.addEventListener('click', function () { editar(null); });
     top.appendChild(nuevo);
+    var bSC = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('lapiz', 16) + ' Textos sin contrato</button>');
+    bSC.addEventListener('click', textosSC);
+    top.appendChild(bSC);
     caja.appendChild(top);
 
     var b = O().barra({ placeholder: 'Buscar por nombre, documento, celular o correo', valor: F.buscar,
@@ -187,6 +205,7 @@
     }
     var otras = otrasPersonas(u);
     if (otras.length) li('aviso', 'Documento repetido: también es de ' + otras.map(function (n) { return O().nombre(n); }).join(', ') + '. Corrígelo con «Documento».', 'ad-malo');
+    if (aplicaSC(u.app, u.rol) && u.sinContrato === true) li('info', 'SIN CONTRATO · hacia afuera sale «' + textoSC(u.app, u.rol) + '»', 'ad-aviso');
     if (u.creado) li('reloj', 'Creado ' + u.creado + (u.creadoPor ? ' por ' + O().nombre(u.creadoPor) : ''), 'ad-apagado');
 
     var acc = t.querySelector('.ct-acc');
@@ -215,6 +234,36 @@
 
   function pedir(accion, datos, textos) {
     return K.piezas.guardado.mientras(K.pedir(accion, datos, { ms: 60000 }), textos).then(function (r) { alGuardar(r); return r; });
+  }
+
+  /* ══════════════ textos de los usuarios sin contrato ══════════════ */
+
+  function textosSC() {
+    var t = scTextos();
+    var et = { CONTRATACION: 'Contratación · estado de cuenta e informes', CONTRATACION_WA: 'Contratación · firma del WhatsApp', CONTABILIDAD: 'Contabilidad', EGRESO: 'Tesorería · egreso', PAGO: 'Tesorería · pago' };
+    var f = K.nodo('<div class="formulario ad-form"><p class="formulario__nota">Lo que sale en lugar del nombre de un usuario marcado SIN CONTRATO. Vacío = el de siempre.</p></div>');
+    var ins = {};
+    Object.keys(SC_TEXTOS).forEach(function (k) {
+      var l = K.nodo('<label class="campo"><span></span><input type="text" maxlength="40"></label>');
+      l.querySelector('span').textContent = et[k];
+      ins[k] = l.querySelector('input'); ins[k].value = t[k]; ins[k].placeholder = SC_TEXTOS[k];
+      f.appendChild(l);
+    });
+    var m = O().modal({ titulo: 'Textos de usuarios sin contrato', cuerpo: f,
+      botones: [{ texto: 'Cancelar', al: function () { m.cerrar(); } }, { texto: 'Guardar', icono: 'check', marca: true, al: guardar }] });
+    function guardar() {
+      var d = { textos: {} };
+      Object.keys(ins).forEach(function (k) { d.textos[k] = ins[k].value.trim(); });
+      m.botones[1].disabled = true;
+      K.piezas.guardado.mientras(K.pedir('sinContratoTextosGuardar', d, { ms: 60000 }), {
+        titulo: 'Guardando los textos', pasos: ['Guardando en CONFIG…', 'Apuntando en la bitácora…'], listo: { titulo: 'Textos al día', paso: 'Queda en la bitácora' }
+      }).then(function (r) {
+        if (D().sinContrato) D().sinContrato.textos = r.textos; else if (C.datos && C.datos()) C.datos().sinContrato = { textos: r.textos, roles: SC_ROLES };
+        if (r.bitacora && C.bitacora) C.bitacora(r.bitacora);
+        m.cerrar();
+        if (vista._repintar) vista._repintar();
+      }, function (e) { m.botones[1].disabled = false; K.aviso((e && e.message) || 'No se pudo guardar.', 'malo', 8000); });
+    }
   }
 
   /* ══════════════ nuevo / editar ══════════════ */
@@ -253,6 +302,18 @@
     }
     var zRev = K.nodo('<div class="ad-rev"></div>');
     f.appendChild(zRev);
+    var zSC = K.nodo('<div class="ad-sc"></div>');
+    f.appendChild(zSC);
+    var sc = u.sinContrato === true;
+    function sinContrato() {
+      zSC.innerHTML = '';
+      if (!aplicaSC(sA.value, rolElegido())) return;
+      var lb = K.nodo('<label class="op-check cf-sw"><input type="checkbox"><span>SIN CONTRATO</span></label>');
+      var i = lb.querySelector('input'); i.checked = sc;
+      i.addEventListener('change', function () { sc = i.checked; });
+      zSC.appendChild(lb);
+      zSC.appendChild(K.nodo('<p class="campo__ayuda">Sigue trabajando igual, pero lo que ve el contratista y los documentos e informes oficiales dicen «' + K.esc(textoSC(sA.value, rolElegido())) + '». Por dentro queda quién lo hizo (MIS REGISTROS e informe gerencial). Al desmarcarlo, lo nuevo vuelve a salir con su nombre; lo ya generado no cambia.</p>'));
+    }
     var iMo = campo('Motivo (queda en la bitácora)', '<input type="text" maxlength="300" placeholder="Opcional">');
     [iD, iT].forEach(function (i) { i.addEventListener('input', function () { i.value = i.value.replace(/\D/g, ''); }); });
     var rev = { alcanceTipo: u.alcance ? (u.alcance.supervisor ? 'supervisor' : 'secretaria') : '', alcance: u.alcance ? (u.alcance.supervisor || u.alcance.secretaria) : '', decide: u.decide === true };
@@ -277,6 +338,7 @@
       revisor();
     }
     function revisor() {
+      sinContrato();
       zRev.innerHTML = '';
       if (!tiene(rolElegido(), 'REVISOR') || (sA.value !== 'SUPERVISION' && sA.value !== 'CONTRATACION')) return;
       var g = K.nodo('<div class="kit-tarjeta ad-rev__caja"><p class="grupo__t">' + K.icono('persona', 14) + ' Usuario REVISOR</p></div>');
@@ -322,6 +384,7 @@
       if (d.telefono && !/^3\d{9}$/.test(d.telefono)) { K.aviso('El celular debe tener 10 dígitos y empezar por 3.', 'aviso', 4000); return; }
       if (d.correo && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(d.correo)) { K.aviso('El correo no es válido.', 'aviso', 3500); return; }
       if (nuevo) { d.clave = iK.value.trim(); d.bienvenida = chB.checked; }
+      if (aplicaSC(d.appDestino, d.rol)) d.sinContrato = sc;
       if (tiene(d.rol, 'REVISOR') && (d.appDestino === 'SUPERVISION' || d.appDestino === 'CONTRATACION')) {
         d.decide = rev.decide;
         if (d.appDestino === 'SUPERVISION') d.alcance = rev.alcanceTipo && rev.alcance ? (rev.alcanceTipo === 'supervisor' ? { supervisor: rev.alcance } : { secretaria: rev.alcance }) : null;

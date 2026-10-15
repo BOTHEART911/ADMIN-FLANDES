@@ -323,6 +323,8 @@
         });
       }
     });
+    /* 15/10 · AGENDA DE REVISIÓN de todo el ecosistema (mismo js/agenda.js de SUPERVISIÓN y CONTRATACIÓN) */
+    if (window.AGENDA) window.AGENDA.configurar({ modo: 'ADMIN', app: app, errorCaja: errorCaja });
     /* 10.4 · la ficha del contratista avisa a SOPORTES y al inicio cuando rehace documentos */
     if (window.CONTRATOS_ADMIN && window.CONTRATOS_ADMIN.alSoporte) window.CONTRATOS_ADMIN.alSoporte(function (r) {
       if (r && r.resumen) C.soporte(r.resumen);
@@ -425,6 +427,7 @@
     MODULOS.forEach(function (m) { if (window[m] && window[m].olvidar) window[m].olvidar(); });
     if (window.CONTRATISTAS && window.CONTRATISTAS.olvidar) window.CONTRATISTAS.olvidar();
     if (window.ATRASOS) window.ATRASOS.olvidar();
+    if (window.AGENDA) window.AGENDA.olvidar();
     ARRANQUE = null;
     K.piezas.sesion.salir();
     location.hash = '';
@@ -450,6 +453,7 @@
     soportes: function (sub) { window.SOPORTES.vista(sub); },
     /* 10.5 · cuentas atrasadas */
     atrasos: function () { window.ATRASOS.vista(); },
+    agenda: function () { window.AGENDA.vista(); },   /* 15/10 */
     /* 10.6 · comunicados, mi bot y tableros */
     comunicados: function () { window.COMUNICADOS.vista(); },
     mibot: function () { window.MIBOT.vista(); },
@@ -479,6 +483,7 @@
     recordatorios: 'RECORDATORIOS',
     soportes: 'SOPORTES',
     atrasos: 'CUENTAS ATRASADAS',
+    agenda: 'AGENDA DE REVISIÓN',
     comunicados: 'COMUNICADOS',
     mibot: 'MI BOT',
     tablero: 'TABLERO DEL ECOSISTEMA',
@@ -496,7 +501,7 @@
     datos: 'TODOS LOS DATOS'
   };
 
-  var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora', recordatorios: 'configuracion', soportes: 'soportes', atrasos: 'configuracion',
+  var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora', recordatorios: 'configuracion', soportes: 'soportes', atrasos: 'configuracion', agenda: 'configuracion',
     comunicados: 'comunicados', mibot: 'miBot', tablero: 'dashboard', rendimiento: 'dashboard', tutoriales: 'tutoriales',
     contratistas: 'contratistas', contratista: 'contratistas', agregar: 'agregarContratista', masiva: 'agregarContratista',
     adicion: 'adicion', cesion: 'cesion', suspension: 'suspension', editar: 'editarContratista',
@@ -605,6 +610,9 @@
     /* 10.5 · quién no presentó la cuenta a tiempo, el aviso push y el plazo */
     if (puede('configuracion')) tC.push(acc.atrasos = accesoIcono('CUENTAS ATRASADAS', 'Quién no presentó la cuenta al supervisor a tiempo, el aviso push y el plazo en días hábiles', 'vencido',
       function () { irA('atrasos'); }));
+    /* 15/10 · qué días llega cuánto trabajo y de quiénes */
+    if (puede('configuracion')) tC.push(accesoIcono('AGENDA DE REVISIÓN', 'Qué días llegan las cuentas y de quiénes, por supervisión y secretaría', 'calendario',
+      function () { irA('agenda'); }));
     if (tC.length) bloque('CONTRATISTAS', tC);
 
     var tA = [];
