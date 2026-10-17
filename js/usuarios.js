@@ -129,6 +129,18 @@
     var bSC = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('lapiz', 16) + ' Textos sin contrato</button>');
     bSC.addEventListener('click', textosSC);
     top.appendChild(bSC);
+    /* 17/10 · el filtro SIN CONTRATO solo se abría escribiendo la dirección:
+       ahora tiene su botón (alterna: otro toque lo quita) */
+    var bVS = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('ojo', 16) + ' <span>Ver los SIN CONTRATO</span></button>');
+    bVS.setAttribute('aria-pressed', F.marca === 'SIN_CONTRATO' ? 'true' : 'false');
+    bVS.addEventListener('click', function () {
+      var on = F.marca !== 'SIN_CONTRATO';
+      F.marca = on ? 'SIN_CONTRATO' : ''; if (on) F.app = '';
+      history.replaceState(null, '', on ? '#/usuarios/SIN_CONTRATO' : '#/usuarios');
+      bVS.setAttribute('aria-pressed', on ? 'true' : 'false');
+      pastillas(); pintar();
+    });
+    top.appendChild(bVS);
     caja.appendChild(top);
 
     var b = O().barra({ placeholder: 'Buscar por nombre, documento, celular o correo', valor: F.buscar,

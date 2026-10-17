@@ -111,13 +111,26 @@
     usuarios: function () {
       return {
         guia: 'Cada tarjeta es un usuario en UNA app (la misma persona puede estar en varias). Filtra por app y estado. Al crear uno, la contraseña es su **documento** salvo que escribas otra, y puedes mandarle la **bienvenida** en el mismo paso. ' +
-              'Los **REVISOR** de Supervisión necesitan saber a quién revisan; y en Supervisión y Contratación decides si **aprueban y devuelven**. En Contratación una persona puede ser **REVISOR y CREADOR** a la vez (revisar cuentas sigue siendo solo del REVISOR).',
+              'Los **REVISOR** de Supervisión necesitan saber a quién revisan; y en Supervisión y Contratación decides si **aprueban y devuelven**. En Contratación una persona puede ser **REVISOR y CREADOR** a la vez (revisar cuentas sigue siendo solo del REVISOR). ' +
+              'Para quien trabaja **sin contrato** (REVISOR de Contratación, CONTABLE, EGRESO o PAGO) marca la casilla **SIN CONTRATO**: hacia el contratista y en los documentos sale un texto genérico. Los textos se cambian en **Textos sin contrato** y **Ver los SIN CONTRATO** los filtra.',
         botones: [P_BLOQUEADOS, P_SIN_CEL,
           { texto: '¿Qué estoy viendo?', responde: function () {
               var l = window.USUARIOS ? window.USUARIOS._filtradas() : [];
               var c = {};
               l.forEach(function (u) { String(u.rol || '').split(',').forEach(function (r) { r = r.trim(); if (r) c[r] = (c[r] || 0) + 1; }); });
               return 'Estás viendo **' + l.length + '** ' + (l.length === 1 ? 'usuario' : 'usuarios') + (l.length ? ': ' + Object.keys(c).map(function (k) { return c[k] + ' ' + k; }).join(', ') : '') + '.';
+            } },
+          { texto: '¿Quiénes están SIN CONTRATO?', responde: function () {
+              var l = usuarios().filter(function (u) { return u.sinContrato === true; });
+              return l.length ? '**' + l.length + '** ' + (l.length === 1 ? 'marcado' : 'marcados') + ' SIN CONTRATO:\n' + listaCorta(l, function (u) { return '· ' + nombre(u.nombre) + ' — ' + (APP_T[u.app] || u.app) + ' (' + u.rol + ')' + (u.estado !== 'ACTIVO' ? ', ' + String(u.estado || '').toLowerCase() : ''); }) +
+                '\nPara verlos en pantalla toca **Ver los SIN CONTRATO**.' : 'Nadie está marcado SIN CONTRATO.';
+            } },
+          { texto: '¿Qué hace la casilla SIN CONTRATO?', responde: function () {
+              return 'La persona **sigue trabajando igual**, pero su nombre no sale hacia afuera. En su lugar va:\n' +
+                '· **Contratación (REVISOR)**: «Usuario revisor» en el estado de cuenta y los informes, y «Usuario Contratación» en el WhatsApp.\n' +
+                '· **Contabilidad (CONTABLE)**: «Usuario Contabilidad»; la **orden de pago** sale con la **firma y el nombre del usuario OFICINA**.\n' +
+                '· **Tesorería**: «Usuario Egreso» (EGRESO) y «Usuario Pagos» (PAGO).\n' +
+                'Por dentro queda quién lo hizo (MIS REGISTROS e informe gerencial). La casilla solo aparece en esos roles. Al desmarcarla, lo nuevo vuelve a salir con su nombre; lo ya generado no cambia. Los textos se cambian en **Textos sin contrato**.';
             } },
           { texto: '¿Quién sigue con la contraseña del documento?', responde: function () {
               var l = activos().filter(function (u) { return u.claveEsDocumento; });
@@ -504,8 +517,16 @@
     };
   };
 
+  /* 17/10 · AGENDA DE REVISIÓN: la guía y las preguntas viven en js/agenda.js
+     (el mismo archivo en SUPERVISIÓN, CONTRATACIÓN y ADMIN) */
+  GUIAS.agenda = function () {
+    return window.AGENDA && window.AGENDA.ayuda ? window.AGENDA.ayuda()
+      : { guia: 'Aquí ves qué días te llega cuánto trabajo y de quiénes.', botones: [] };
+  };
+
   var TITULOS = { inicio: 'Tu inicio', comunicados: 'Comunicados', mibot: 'Mi bot', tutoriales: 'Tutoriales en video', tablero: 'Tablero del ecosistema', rendimiento: 'Tablero de rendimiento', atrasos: 'Cuentas atrasadas', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora', recordatorios: 'Recordatorios', soportes: 'Soportes',
                   novedad: 'Novedades del contrato', datos: 'Todos los datos del contrato' };
+  TITULOS.agenda = 'Agenda de revisión';
   if (window.AYUDA_CONTRATOS) window.AYUDA_CONTRATOS.sumar(GUIAS, TITULOS);
 
   function montar(vista, extra) {
