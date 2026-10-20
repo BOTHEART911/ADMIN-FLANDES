@@ -54,6 +54,10 @@
   var CAT = {
     VIGENCIA: ['calendario', 'Vigencia (año)', 'numero'],
     SOLIDARIO_UMBRAL: ['calendario', 'Umbral del fondo de solidaridad pensional (IBC)', 'pesos'],
+    /* 19/10 · los aportes que se llenan solos en INGRESAR CUENTA (Contratista), sobre la base de cotización */
+    PLANILLA_PCT_SALUD: ['calendario', 'Aporte a salud: porcentaje de la base de cotización (Ingresar cuenta)', 'porcentaje'],
+    PLANILLA_PCT_PENSION: ['calendario', 'Aporte a pensión: porcentaje de la base de cotización (Ingresar cuenta)', 'porcentaje'],
+    PLANILLA_PCT_ARL: ['calendario', 'Aporte a ARL: porcentaje de la base de cotización (Ingresar cuenta)', 'porcentaje'],
     INGRESA_SIGUIENTE_DESDE: ['calendario', 'Desde qué estado de la cuenta anterior se puede ingresar la siguiente', 'umbralIngreso'],
     LISTA_BANCOS: ['catalogos', 'Bancos', 'lista'],
     LISTA_EPS: ['catalogos', 'EPS', 'lista'],
@@ -363,6 +367,19 @@
     },
     numero: function (t, it) {
       campoTexto(t, it, { inputmode: 'decimal', valor: function (v) { if (!/^-?\d+([.,]\d+)?$/.test(String(v).trim())) throw new Error('Escribe solo el número.'); return String(v).trim(); } });
+    },
+    /* 19/10 · un porcentaje con coma o punto (12,5 · 0,522). Se guarda con punto,
+       que es como lo lee el CORE (FC_num) y lo usa Contratista. */
+    porcentaje: function (t, it) {
+      var inicial = String(it.valor === null || it.valor === undefined ? '' : it.valor).replace('.', ',');
+      var inp = campoTexto(t, it, { inputmode: 'decimal', inicial: inicial,
+        extra: function () { return K.nodo('<p class="formulario__nota">Escribe solo el número, sin el signo %. El aporte se redondea hacia arriba a la centena y el contratista lo puede corregir para igualarlo a su planilla.</p>'); },
+        valor: function (v) {
+          var x = String(v).trim().replace(',', '.');
+          if (!/^\d+(\.\d+)?$/.test(x) || !(Number(x) > 0) || Number(x) >= 100) throw new Error('Escribe un porcentaje entre 0 y 100, por ejemplo 12,5.');
+          return x;
+        } });
+      return inp;
     },
     pesos: function (t, it) {
       campoTexto(t, it, { inputmode: 'numeric', inicial: K.pesos ? K.pesos(Number(it.valor) || 0) : it.valor,
