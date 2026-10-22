@@ -153,6 +153,9 @@
     COMUNICACIONES_COPIA: 'Comunicaciones · copia de la asignación (Notificar)',
     CONTRATO_NOTIFICADO: 'Notificación final (descargar la certificación)',
     SOPORTE_RESUELTO: 'Soporte resuelto (calificar)', DOCUMENTOS_REHECHOS: 'Documentos de la cuenta rehechos', CUENTA_ATRASADA: 'Cuenta atrasada',
+    /* 21/10 · botones RECORDAR de SUPERVISIÓN (firma el supervisor) y de CUENTAS ATRASADAS en ADMIN (firma la oficina) */
+    RECORDAR_REPORTE: 'Recordar reporte (corrigió y no reportó)', RECORDAR_CORRECCION: 'Recordar corrección (devuelta o incompleta)',
+    RECORDAR_ATRASO: 'Recordar cuentas atrasadas',
     /* 26/09 · solicitudes a Contratación. La NUEVA es el mensaje al GRUPO de Contratación */
     SOLICITUD_CONTRATACION_NUEVA: 'Solicitud a Contratación · aviso al grupo', SOLICITUD_CONTRATACION_RESPUESTA: 'Solicitud a Contratación · respuesta',
     SOLICITUD_CONTRATACION_GESTION: 'Solicitud a Contratación · gestión registrada',
@@ -170,6 +173,9 @@
   var AVISOS_CONTRATACION = ['CUENTA_APROBADA', 'CUENTA_DEVUELTA_CONTRATACION', 'GRUPO_DEVUELTA_CONTRATACION'];
   var MARCADORES_CONTRATACION = '{revisor} {contratista} {nombre} {contrato} {informe} {total} {cuenta} {motivo} {motivo_negrilla} {observacion} {supervisor} {fecha}';
   var MARCADORES_BOT = '{estado} {fecha} {desde} {duracion} {detalle} {enlace} {proyecto}';
+  /* 21/10 · {plazo}: "lleva N días hábiles de vencida…" o "le quedan N días hábiles…"; {firma} y {cargo}: quien envía */
+  function esAvisoRecordar(t) { return /^RECORDAR_/.test(t); }
+  var MARCADORES_RECORDAR = '{nombre} {contrato} {informe} {total} {estado} {periodo} {limite} {dias} {plazo} {plazo_corto} {pendiente} {cuentas} {cantidad} {cantidad_texto} {cuenta} {plazo_regla} {firma} {cargo} {supervisor}';
   var MARCADORES = '{nombre} {contrato} {informe} {estado} {valor} {observacion} {supervisor} {secretaria} {orden} {egreso} {fecha} {app} {clave} {codigo} {evento} {asignados} {hasta} {tipo} {documento} {telefono} {detalle} {solicitud} {respuesta} {gestion} {donde}';
 
   var MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -1116,7 +1122,10 @@
     if (bot) c = ['CORREO'];
     if (grupo) c = ['WHATSAPP'];
     var f = K.nodo('<div class="formulario ad-form"></div>');
-    f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(bot ? MARCADORES_BOT : (nativo ? MARCADORES_COPIA : (deCont ? MARCADORES_CONTRATACION : MARCADORES))) + '</code>. El que no venga en el aviso se borra solo. Un texto que dejes <b>vacío</b> sale con el texto por defecto.' +
+    var rec = esAvisoRecordar(tipo);
+    f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(bot ? MARCADORES_BOT : (nativo ? MARCADORES_COPIA : (deCont ? MARCADORES_CONTRATACION : (rec ? MARCADORES_RECORDAR : MARCADORES)))) + '</code>. El que no venga en el aviso se borra solo. Un texto que dejes <b>vacío</b> sale con el texto por defecto.' +
+      (rec ? ' Es un <b>recordatorio</b>: lo firma <b>{firma}</b> con <b>{cargo}</b> (en SUPERVISIÓN el supervisor del contrato; en ADMIN la oficina de la llave RECORDAR). <b>{plazo}</b> dice si la cuenta ya está vencida y cuántos días hábiles lleva, o cuántos le quedan' +
+        (tipo === 'RECORDAR_ATRASO' ? '; <b>{cuentas}</b> trae una línea por cada cuenta atrasada con sus días.' : (tipo === 'RECORDAR_CORRECCION' ? '; <b>{pendiente}</b> trae el motivo o los soportes que faltan.' : '.')) : '') +
       (bot ? ' Este aviso sale <b>solo por correo</b> a los correos de la tarjeta <b>ALERTA DE BOT DESCONECTADO</b> (arriba).' : '') +
       (deCont ? ' Lo firma <b>{revisor}</b>: el usuario de Contratación que aprobó o devolvió. <b>{motivo}</b> pone cada motivo en su línea con “- ” y <b>{motivo_negrilla}</b> igual pero en negrilla.' : '') +
       (nativo ? ' Es el texto del botón <b>NOTIFICAR</b> del detalle de una solicitud EN PROCESO en COMUNICACIONES: se abre <b>tu WhatsApp</b> con el número del asignado y este texto listo para enviar (no sale por el bot). {quien} es quien notifica y {entrega} la fecha de entrega o publicación. Una línea que queda sin dato se quita sola.' :
