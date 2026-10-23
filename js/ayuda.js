@@ -78,7 +78,7 @@
       var textos = {
         calendario: 'Los **festivos** se calculan por ley para la vigencia (' + (f.vigencia || '') + ') y la siguiente; aquí marcas los que no aplican o agregas días no laborales. El **día de corte** manda a la radicación a los dos primeros hábiles del mes siguiente, y el **cierre de vigencia** apaga la radicación.',
         catalogos: 'Las listas que se escogen en los formularios. Agrega con el campo de abajo y quita con la X. Las que tienen **candado** las usa el código tal cual.',
-        supervisores: 'Los supervisores que se ofrecen al crear un contrato, con su celular, su firma y su **grupo** de WhatsApp (sin grupo, sus avisos no salen).',
+        supervisores: 'Los supervisores que se ofrecen al crear un contrato, con su celular, su firma y su **grupo** de WhatsApp (sin grupo, sus avisos no salen). **Reemplazo de supervisor**: escoges quién sale, quién entra y desde cuándo; antes de aplicar ves hoja por hoja qué cambia (contratos activos, cuentas que aún no revisó, revisores y grupo). Lo terminado y lo ya revisado se queda con el que sale.',
         grupos: 'Ids de los grupos de WhatsApp y carpetas de Drive. Pega el enlace completo: el CORE saca el id y comprueba que la carpeta exista.',
         plantillas: 'Las plantillas de Google de cada documento. **Ir a plantilla** la abre para revisarla.',
         mensajes: 'Toca un aviso para cambiar su texto (push, WhatsApp, correo) y sus canales. Los **marcadores** entre llaves se rellenan solos.',
@@ -112,7 +112,8 @@
       return {
         guia: 'Cada tarjeta es un usuario en UNA app (la misma persona puede estar en varias). Filtra por app y estado. Al crear uno, la contraseña es su **documento** salvo que escribas otra, y puedes mandarle la **bienvenida** en el mismo paso. ' +
               'Los **REVISOR** de Supervisión necesitan saber a quién revisan; y en Supervisión y Contratación decides si **aprueban y devuelven**. En Contratación una persona puede ser **REVISOR y CREADOR** a la vez (revisar cuentas sigue siendo solo del REVISOR). ' +
-              'Para quien trabaja **sin contrato** (REVISOR de Contratación, CONTABLE, EGRESO o PAGO) marca la casilla **SIN CONTRATO**: hacia el contratista y en los documentos sale un texto genérico. Los textos se cambian en **Textos sin contrato** y **Ver los SIN CONTRATO** los filtra.',
+              'Para quien trabaja **sin contrato** (REVISOR de Contratación, CONTABLE, EGRESO o PAGO) marca la casilla **SIN CONTRATO**: hacia el contratista y en los documentos sale un texto genérico. Los textos se cambian en **Textos sin contrato** y **Ver los SIN CONTRATO** los filtra. ' +
+              '**Borrar** quita la fila de esa app (o de las que marques): antes te muestra qué depende de la persona, pide motivo y la fila completa queda en la bitácora. A un **SUPERVISOR con contratos activos** no lo deja borrar: primero va el **Reemplazo de supervisor**.',
         botones: [P_BLOQUEADOS, P_SIN_CEL,
           { texto: '¿Qué estoy viendo?', responde: function () {
               var l = window.USUARIOS ? window.USUARIOS._filtradas() : [];

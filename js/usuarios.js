@@ -233,11 +233,13 @@
     if (u.intentos) boton('candado', 'Desbloquear', function () { desbloquear(u); });
     if (esDev()) boton('documento', 'Documento', function () { documento(u); });
     boton(u.estado === 'ACTIVO' ? 'prohibido' : 'check', u.estado === 'ACTIVO' ? 'Estado' : 'Activar', function () { estado(u); }, u.estado === 'ACTIVO' ? 'cf-quitar' : '');
+    boton('basura', 'Borrar', function () { borrar(u); }, 'cf-quitar');
     return t;
   }
 
   /* respuesta común de las escrituras */
   function alGuardar(r) {
+    if (r.supervisores && C.supervisores) C.supervisores(r.supervisores);
     if (r.usuarios) C.usuarios(r.usuarios);
     else if (r.usuario) C.usuario(r.usuario);
     if (r.bitacora) C.bitacora(r.bitacora);
@@ -534,6 +536,107 @@
         boton(); K.aviso((e && e.message) || 'No se pudo cambiar.', 'malo', 9000);
       });
     }
+  }
+
+  /* ══════════════ BORRAR (22/10) ══════════════
+     Dos pasos, como el cambio de documento: la vista previa dice qué filas
+     se van, de qué depende la persona y si algo lo impide (un SUPERVISOR con
+     contratos ACTIVOS va primero al reemplazo). Borrar pide motivo y la
+     casilla de confirmación; la fila completa queda en la bitácora. */
+  function borrar(u) {
+    var f = K.nodo('<div class="formulario ad-form ad-doc ad-borrar">' +
+      '<div class="ad-borrar__apps cf-chips" aria-label="Apps"></div>' +
+      '<div class="ad-doc__plan" aria-live="polite"></div>' +
+      '<label class="campo"><span>Motivo * (queda en la bitácora)</span><input type="text" maxlength="300" placeholder="Por qué se borra"></label>' +
+      '<label class="ad-borrar__ok"><input type="checkbox"> <span>Entiendo que se borra. Su fila completa (sin la contraseña) queda en la bitácora.</span></label></div>');
+    var zA = f.querySelector('.ad-borrar__apps'), zP = f.querySelector('.ad-doc__plan');
+    var iMo = f.querySelector('input[type="text"]'), iOk = f.querySelector('input[type="checkbox"]');
+    var apps = [u.app], plan = null, ctrl = null, ocupado = false;
+    var m = O().modal({ titulo: 'Borrar a ' + O().nombre(u.nombre), cuerpo: f,
+      alCerrar: function () { if (ctrl) ctrl.abort(); },
+      botones: [{ texto: 'Cancelar', al: function () { m.cerrar(); } }, { texto: 'Borrar', icono: 'basura', marca: true, al: confirmar }] });
+    m.botones[1].classList.add('cf-quitar');
+
+    /* cabecera antes que datos: lo que ya se sabe de la tarjeta */
+    function esqueleto() {
+      zP.innerHTML = '';
+      var c = K.nodo('<div class="kit-tarjeta ad-doc__caja"><p class="grupo__t"></p><p class="formulario__nota">Revisando de qué depende…</p></div>');
+      c.querySelector('.grupo__t').innerHTML = K.icono('persona', 14) + ' ' + K.esc(O().nombre(u.nombre)) + ' · C.C. ' + K.esc(u.documento);
+      zP.appendChild(c);
+    }
+    function boton() {
+      var b = m.botones[1];
+      b.disabled = ocupado || !plan || !!plan.bloqueos.length || !iOk.checked || iMo.value.trim().length < 5;
+    }
+    [iMo, iOk].forEach(function (x) { x.addEventListener('input', boton); x.addEventListener('change', boton); });
+
+    function pintar(p) {
+      plan = p;
+      zA.innerHTML = '';
+      if (p.apps.length > 1) {
+        zA.appendChild(K.nodo('<p class="formulario__nota">Tiene usuario en ' + p.apps.length + ' apps. Marca las que se borran:</p>'));
+        p.apps.forEach(function (a) {
+          var x = K.nodo('<button type="button" class="kit-pastilla"></button>');
+          x.textContent = (APP_T[a.app] || a.app) + ' · ' + a.rol;
+          x.setAttribute('aria-pressed', apps.indexOf(a.app) >= 0);
+          x.addEventListener('click', function () {
+            var i = apps.indexOf(a.app);
+            if (i >= 0) { if (apps.length === 1) return; apps.splice(i, 1); } else apps.push(a.app);
+            leer();
+          });
+          zA.appendChild(x);
+        });
+      }
+      zP.innerHTML = '';
+      var caja = K.nodo('<div class="kit-tarjeta ad-doc__caja"><p class="grupo__t"></p><ul class="ad-sup__datos ad-doc__hojas"></ul></div>');
+      caja.querySelector('.grupo__t').innerHTML = K.icono('persona', 14) + ' ' + K.esc(O().nombre(p.nombre)) + ' · C.C. ' + K.esc(p.documento);
+      var ul = caja.querySelector('ul');
+      function li(ic, txt, clase) { var e = K.nodo('<li' + (clase ? ' class="' + clase + '"' : '') + '>' + K.icono(ic, 13) + '<span></span></li>'); e.querySelector('span').textContent = txt; ul.appendChild(e); }
+      p.filas.forEach(function (x) {
+        li('hoja', 'USUARIOS · fila ' + x.fila + ': ' + (APP_T[x.app] || x.app) + ' · ' + x.rol + ' · ' + x.estado + (x.telefono ? ' · ' + x.telefono : '') + (x.firma ? ' · con firma' : ''));
+      });
+      p.dependencias.forEach(function (d) { li('herramienta', d.hoja + ' · ' + d.columna + ': ' + d.texto); });
+      p.avisos.forEach(function (x) { li('info', x, 'ad-doc__aviso'); });
+      p.bloqueos.forEach(function (x) { li('prohibido', x, 'ad-malo'); });
+      zP.appendChild(caja);
+      if (p.bloqueos.some(function (x) { return /REEMPLAZO/.test(x); }) && window.CONFIG && window.CONFIG.reemplazo) {
+        var ir = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' + K.icono('intercambiar', 16) + ' Hacer el reemplazo de supervisor</button>');
+        ir.addEventListener('click', function () {
+          m.cerrar();
+          C.irA('configuracion/supervisores');
+          setTimeout(function () { window.CONFIG.reemplazo(p.nombre); }, 250);
+        });
+        zP.appendChild(ir);
+      }
+      boton();
+    }
+
+    function leer() {
+      if (ctrl) ctrl.abort();
+      ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+      plan = null; boton(); esqueleto();
+      K.pedir('usuarioBorrarPrevia', { documento: u.documento, appDestino: u.app, apps: apps }, { ms: 60000, senal: ctrl ? ctrl.signal : undefined })
+        .then(pintar, function (e) {
+          if (e && (e.codigo === 'CANCELADA' || e.name === 'AbortError')) return;
+          zP.innerHTML = ''; zP.appendChild(K.nodo('<p class="formulario__nota formulario__nota--fuerte"></p>')).textContent = (e && e.message) || 'No se pudo revisar.';
+        });
+    }
+
+    function confirmar() {
+      if (ocupado || !plan) return;
+      ocupado = true; boton();
+      var p = plan;
+      pedir('usuarioBorrar', { documento: p.documento, appDestino: u.app, apps: apps, huella: p.huella, motivo: iMo.value.trim(), confirmo: true }, {
+        titulo: 'Borrando el usuario', sub: O().nombre(p.nombre) + ' · ' + apps.map(function (a) { return APP_T[a] || a; }).join(', '),
+        pasos: ['Comprobando que nada cambió…', 'Guardando su fila en la bitácora…', 'Quitándolo de las hojas…'],
+        listo: { titulo: 'Usuario borrado', paso: 'Queda en la bitácora' }
+      }).then(function () { m.cerrar(); }, function (e) {
+        ocupado = false;
+        if (e && e.codigo === 'HUELLA' && e.datos) { pintar(e.datos); K.aviso(e.message, 'aviso', 8000); return; }
+        boton(); K.aviso((e && e.message) || 'No se pudo borrar.', 'malo', 9000);
+      });
+    }
+    leer();
   }
 
   function estado(u) {

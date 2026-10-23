@@ -3562,3 +3562,13 @@ button.so-per:hover { border-color: var(--k-marca); background: rgba(var(--k-mar
 .rc-hecho--malo { background: var(--k-malo-fondo); color: var(--k-malo); }
 :root[data-tema="oscuro"] .rc-hecho { color: var(--k-ok); }
 :root[data-tema="oscuro"] .rc-hecho--malo { color: var(--k-malo); }
+
+/* 22/10 · BORRAR USUARIO y REEMPLAZO DE SUPERVISOR */
+.ad-borrar__apps { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ad-borrar__apps:empty { display: none; }
+.ad-borrar__ok { display: flex; gap: 8px; align-items: flex-start; font-size: .92rem; line-height: 1.35; cursor: pointer; }
+.ad-borrar__ok input { margin-top: 3px; flex: none; }
+.ad-rz__plan { display: flex; flex-direction: column; gap: 10px; }
+.ad-rz__grupo { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ad-rz__gnuevo { margin-top: 8px; }
+.ad-rz .ad-doc__hojas li { font-size: .9rem; }

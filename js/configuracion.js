@@ -895,6 +895,10 @@
     var nuevo = K.nodo('<button type="button" class="kit-btn kit-btn--marca">' + K.icono('mas', 16) + ' Agregar supervisor</button>');
     nuevo.addEventListener('click', function () { editarSupervisor(null); });
     s.appendChild(nuevo);
+    /* 22/10 · reemplazo de supervisor: sale uno, entra otro (contratos activos, cuentas sin revisar, revisores y grupo) */
+    var rz = K.nodo('<button type="button" class="kit-btn kit-btn--plano">' + K.icono('intercambiar', 16) + ' Reemplazo de supervisor</button>');
+    rz.addEventListener('click', function () { reemplazo(''); });
+    s.appendChild(rz);
     var g = K.nodo('<div class="kit-rejilla kit-rejilla--auto ad-sups"></div>');
     sup.lista.forEach(function (x) {
       var t = K.nodo('<article class="kit-tarjeta ad-sup"><div class="ad-sup__cab"><span class="ad-sup__cara"></span><div><b></b><small></small></div></div>' +
@@ -921,6 +925,11 @@
         var bC = K.nodo('<button type="button" class="kit-btn kit-btn--plano ins-accion">' + K.icono('copiar', 14) + ' Grupo</button>');
         bC.addEventListener('click', function () { copiar(x.grupo); });
         acc.appendChild(bC);
+      }
+      if (x.contratos.activos) {
+        var bZ = K.nodo('<button type="button" class="kit-btn kit-btn--plano ins-accion">' + K.icono('intercambiar', 14) + ' Reemplazar</button>');
+        bZ.addEventListener('click', function () { reemplazo(x.nombre); });
+        acc.appendChild(bZ);
       }
       var bR = K.nodo('<button type="button" class="kit-btn kit-btn--plano ins-accion cf-quitar">' + K.icono('basura', 14) + ' Retirar</button>');
       bR.addEventListener('click', function () { retirarSupervisor(x); });
@@ -995,6 +1004,197 @@
         }).then(function (r) { C.supervisores(r.supervisores); C.bitacora(r.bitacora); if (vista._repintar) vista._repintar(); },
           function (e) { K.aviso((e && e.message) || 'No se pudo retirar.', 'malo', 7000); });
       });
+  }
+
+  /* ══════════════ REEMPLAZO DE SUPERVISOR (22/10) ══════════════
+     Se escoge quién sale, quién entra (usuario SUPERVISION/SUPERVISOR ya
+     creado) y desde cuándo. Cada cambio pide la vista previa (una a la vez,
+     la anterior se corta): hoja por hoja y columna por columna lo que
+     cambia, lo que se queda y los avisos. "Aplicar" manda la huella de esa
+     vista previa; si algo cambió en la hoja, el CORE no aplica y devuelve
+     la vista previa nueva. */
+
+  function hoyDMY() { var d = new Date(); return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear(); }
+  function isoADMY(v) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : ''; }
+  function dmyAIso(v) { var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v || ''); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; }
+
+  function reemplazo(salientePre) {
+    var E = { saliente: salientePre || '', entrante: '', fecha: hoyDMY(), secretaria: '', grupoModo: '', grupoNuevo: '', agregarLista: true, borrarSaliente: false };
+    var op = null, plan = null, ctrl = null, ocupado = false, espera = null;
+    var f = K.nodo('<div class="formulario ad-form ad-rz">' +
+      '<label class="campo"><span>Sale *</span><select class="ad-rz__sal"><option value="">Cargando supervisores…</option></select></label>' +
+      '<label class="campo"><span>Entra * (usuario SUPERVISION / SUPERVISOR)</span><select class="ad-rz__ent"><option value="">Cargando…</option></select></label>' +
+      '<label class="campo"><span>En el cargo desde *</span><input type="date" class="ad-rz__fecha"></label>' +
+      '<label class="campo ad-rz__sec" hidden><span>Secretaría</span><select></select></label>' +
+      '<div class="campo"><span>Grupo de WhatsApp del que entra</span><div class="cf-chips ad-rz__grupo"></div>' +
+      '<input type="text" class="ad-rz__gnuevo" maxlength="30" placeholder="Id del grupo nuevo (15 a 30 letras y números)" hidden></div>' +
+      '<label class="ad-borrar__ok ad-rz__lista" hidden><input type="checkbox" checked> <span>Agregarlo a la lista de SUPERVISORES (para escogerlo al crear contratos)</span></label>' +
+      '<label class="ad-borrar__ok ad-rz__borrar"><input type="checkbox"> <span>Al final, borrar al que sale de USUARIOS y SUPERVISORES y quitar su grupo (su fila y su firma quedan en la bitácora)</span></label>' +
+      '<label class="campo"><span>Motivo (queda en la bitácora)</span><input type="text" class="ad-rz__motivo" maxlength="300" placeholder="Opcional"></label>' +
+      '<div class="ad-doc__plan ad-rz__plan" aria-live="polite"></div></div>');
+    var q = function (c) { return f.querySelector(c); };
+    var sS = q('.ad-rz__sal'), sE = q('.ad-rz__ent'), iF = q('.ad-rz__fecha'), lSec = q('.ad-rz__sec'), sSec = lSec.querySelector('select');
+    var zG = q('.ad-rz__grupo'), iG = q('.ad-rz__gnuevo'), lLi = q('.ad-rz__lista'), cLi = lLi.querySelector('input'), cBo = q('.ad-rz__borrar input');
+    var iMo = q('.ad-rz__motivo'), zP = q('.ad-rz__plan');
+    iF.value = dmyAIso(E.fecha);
+    var m = O().modal({ titulo: 'Reemplazo de supervisor', cuerpo: f, ancha: true,
+      alCerrar: function () { if (ctrl) ctrl.abort(); clearTimeout(espera); },
+      botones: [{ texto: 'Cancelar', al: function () { m.cerrar(); } }, { texto: 'Aplicar', icono: 'check', marca: true, al: aplicar }] });
+
+    function boton() {
+      var b = m.botones[1], n = plan ? plan.pendientes : 0;
+      b.innerHTML = K.icono('check', 16) + ' ' + (plan ? (n ? 'Aplicar ' + n + (n === 1 ? ' cambio' : ' cambios') : 'Nada pendiente') : 'Aplicar');
+      b.disabled = ocupado || !plan || !!plan.bloqueos.length || !n;
+    }
+
+    function opciones(o) {
+      op = o;
+      sS.innerHTML = '<option value="">Escoge quién sale</option>';
+      o.salientes.forEach(function (x) {
+        if (!x.total && !x.enLista && !x.usuario) return;
+        var e = document.createElement('option'); e.value = x.nombre;
+        e.textContent = O().nombre(x.nombre) + ' · ' + x.activos + ' activos de ' + x.total + (x.enLista ? '' : ' (ya no está en la lista)');
+        if (K.norm(x.nombre) === K.norm(E.saliente)) e.selected = true;
+        sS.appendChild(e);
+      });
+      sE.innerHTML = '<option value="">Escoge quién entra</option>';
+      o.entrantes.forEach(function (x) {
+        var e = document.createElement('option'); e.value = x.documento;
+        e.textContent = O().nombre(x.nombre) + ' · C.C. ' + x.documento + (x.firma ? '' : ' · sin firma');
+        if (x.documento === E.entrante) e.selected = true;
+        sE.appendChild(e);
+      });
+      if (!o.entrantes.length) sE.innerHTML = '<option value="">No hay usuarios SUPERVISION / SUPERVISOR activos: créalo en USUARIOS Y ROLES</option>';
+    }
+
+    function pastillasGrupo(p) {
+      zG.innerHTML = '';
+      var g = p ? p.grupo : null;
+      var ops = [];
+      if (g && g.actual) ops.push(['ACTUAL', 'Su grupo actual (' + g.actual + ')']);
+      if (g && g.saliente) ops.push(['REUSAR', 'Reusar el del que sale (' + g.saliente + ')']);
+      ops.push(['NUEVO', 'Uno nuevo']);
+      ops.push(['NINGUNO', 'Ninguno por ahora']);
+      var modo = g ? g.modo : E.grupoModo;
+      ops.forEach(function (o2) {
+        var x = K.nodo('<button type="button" class="kit-pastilla"></button>');
+        x.textContent = o2[1];
+        x.setAttribute('aria-pressed', o2[0] === modo);
+        x.addEventListener('click', function () { E.grupoModo = o2[0]; iG.hidden = o2[0] !== 'NUEVO'; leerLuego(o2[0] === 'NUEVO' ? 600 : 0); });
+        zG.appendChild(x);
+      });
+      iG.hidden = modo !== 'NUEVO';
+    }
+
+    function seccion(titulo, items, vacio) {
+      var c = K.nodo('<div class="kit-tarjeta ad-doc__caja"><p class="grupo__t"></p><ul class="ad-sup__datos ad-doc__hojas"></ul></div>');
+      c.querySelector('.grupo__t').innerHTML = K.icono('hoja', 14) + ' ' + K.esc(titulo);
+      var ul = c.querySelector('ul');
+      if (!items.length) { var e0 = K.nodo('<li class="ad-apagado">' + K.icono('check', 13) + '<span></span></li>'); e0.querySelector('span').textContent = vacio; ul.appendChild(e0); }
+      items.forEach(function (it) { var e = K.nodo('<li' + (it[2] ? ' class="' + it[2] + '"' : '') + '>' + K.icono(it[0], 13) + '<span></span></li>'); e.querySelector('span').textContent = it[1]; ul.appendChild(e); });
+      return c;
+    }
+
+    function pintar(p) {
+      plan = p;
+      zP.innerHTML = '';
+      pastillasGrupo(p);
+      var secs = Object.keys(p.secretarias || {});
+      lSec.hidden = secs.length < 2;
+      if (secs.length > 1) {
+        sSec.innerHTML = '<option value="">Todas sus secretarías</option>';
+        secs.forEach(function (n) { var e = document.createElement('option'); e.value = n; e.textContent = O().titulo ? O().titulo(n) + ' · ' + p.secretarias[n] + ' activos' : n; if (K.norm(n) === K.norm(E.secretaria)) e.selected = true; sSec.appendChild(e); });
+      }
+      lLi.hidden = p.lista.esta;
+      var ent = O().nombre(p.entrante), sal = O().nombre(p.saliente);
+      var cab = K.nodo('<p class="formulario__nota formulario__nota--fuerte"></p>');
+      cab.innerHTML = K.icono('intercambiar', 14) + ' ' + K.esc(sal) + ' → ' + K.esc(ent) + ' · desde ' + K.esc(p.fecha || '—') + ' · ' + p.pendientes + (p.pendientes === 1 ? ' cambio' : ' cambios');
+      zP.appendChild(cab);
+      if (p.bloqueos.length || p.avisos.length) zP.appendChild(seccion('Antes de aplicar', p.bloqueos.map(function (x) { return ['prohibido', x, 'ad-malo']; }).concat(p.avisos.map(function (x) { return ['aviso', x, 'ad-doc__aviso']; })), ''));
+      zP.appendChild(seccion('CONTRATISTAS · SUPERVISOR (contratos activos que pasan a ' + ent + ')',
+        p.contratos.mover.map(function (x) { return ['persona', 'Contrato ' + x.contrato + ' · ' + O().nombre(x.nombre) + ' · ' + (O().titulo ? O().titulo(x.secretaria) : x.secretaria)]; }), 'Ningún contrato activo por pasar'));
+      zP.appendChild(seccion('CONTRATISTAS · CONTACTO SUPERVISOR' + (p.grupo.id ? ' (grupo ' + p.grupo.id + ')' : ''),
+        p.contratos.contacto.map(function (x) { return ['whatsapp', 'Contrato ' + x.contrato + ' · ' + O().nombre(x.nombre) + ' · antes ' + (x.contacto || 'vacío')]; }), p.grupo.id ? 'Todos sus contratos activos ya tienen ese grupo' : 'Sin grupo: no se cambia'));
+      zP.appendChild(seccion('CUENTAS · SUPERVISOR (las que aún no revisó)',
+        p.cuentas.mover.map(function (x) { return ['documento', O().nombre(x.nombre) + ' · cuenta ' + x.informe + ' · ' + x.estado]; })
+          .concat(p.cuentas.quedan.revisadas ? [['candado', p.cuentas.quedan.revisadas + ' ya revisadas o cerradas se quedan a nombre de ' + sal, 'ad-apagado']] : [])
+          .concat(p.cuentas.quedan.otras ? [['info', p.cuentas.quedan.otras + ' sin revisar en contratos que no pasan se quedan a nombre de ' + sal, 'ad-apagado']] : []), 'Ninguna cuenta sin revisar por pasar'));
+      zP.appendChild(seccion('CONFIG · SUPERVISION_ALCANCE (revisores atados a ' + sal + ')',
+        p.revisores.map(function (x) { return ['persona', O().nombre(x.nombre) + ' pasa a revisar lo de ' + ent]; }), 'Ningún revisor atado a su nombre'));
+      var otros = [];
+      if (p.grupo.cambia) otros.push(['whatsapp', 'GRUPOS_SUPERVISOR · ' + ent + ' → ' + p.grupo.id]);
+      if (p.lista.agregar) otros.push(['mas', 'SUPERVISORES · fila nueva para ' + ent + (p.lista.contacto ? ' (celular ' + p.lista.contacto + ')' : '')]);
+      if (p.borrar && !p.borrar.nada) otros.push(['basura', 'Se borra ' + sal + ': ' + p.borrar.usuarios.length + ' fila(s) de USUARIOS, ' + p.borrar.supervisores.length + ' de SUPERVISORES' + (p.borrar.grupo ? ' y su grupo' : '') + (p.borrar.firma ? '; su firma pasa a FIRMAS_HISTORICAS' : ''), 'ad-malo']);
+      if (p.borrar && p.borrar.nada) otros.push(['info', sal + ' ya no tiene usuario, fila en SUPERVISORES ni grupo: no hay nada que borrar', 'ad-apagado']);
+      zP.appendChild(seccion('Lo demás', otros, 'Nada más'));
+      if (p.contratos.quedan.length) zP.appendChild(seccion('Se quedan a nombre de ' + sal + ' (no se tocan)',
+        p.contratos.quedan.slice(0, 40).map(function (x) { return ['candado', 'Contrato ' + x.contrato + ' · ' + O().nombre(x.nombre) + ' · ' + x.por, 'ad-apagado']; }), ''));
+      zP.appendChild(K.nodo('<p class="formulario__nota">' + K.icono('info', 13) + ' No se tocan informes, actas, FIRMAS, estados, avisos ya enviados ni las trazas «a nombre de».</p>'));
+      boton();
+    }
+
+    function leer() {
+      if (ctrl) ctrl.abort();
+      ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+      plan = null; boton();
+      if (op) { E.saliente = sS.value; E.entrante = sE.value; } else if (sS.value) E.saliente = sS.value;
+      E.fecha = isoADMY(iF.value);
+      E.secretaria = lSec.hidden ? '' : sSec.value; E.grupoNuevo = iG.value.trim(); E.agregarLista = cLi.checked; E.borrarSaliente = cBo.checked;
+      if (op && (!E.saliente || !E.entrante)) { zP.innerHTML = ''; zP.appendChild(K.nodo('<p class="formulario__nota">Escoge quién sale y quién entra para ver qué cambia.</p>')); return; }
+      if (op) { zP.innerHTML = ''; zP.appendChild(K.nodo('<div class="kit-tarjeta ad-doc__caja"><p class="formulario__nota">' + K.icono('reloj', 13) + ' Revisando hoja por hoja…</p></div>')); }
+      var d = { saliente: E.saliente, entrante: E.entrante, fecha: E.fecha, secretaria: E.secretaria, grupoModo: E.grupoModo,
+                grupoNuevo: E.grupoNuevo, agregarLista: E.agregarLista, borrarSaliente: E.borrarSaliente };
+      K.pedir('supervisorReemplazoPrevia', d, { ms: 60000, senal: ctrl ? ctrl.signal : undefined }).then(function (r) {
+        if (!op) opciones(r.opciones);
+        if (r.plan) pintar(r.plan);
+        else if (!E.saliente || !E.entrante) { zP.innerHTML = ''; zP.appendChild(K.nodo('<p class="formulario__nota">Escoge quién sale y quién entra para ver qué cambia.</p>')); }
+      }, function (e) {
+        if (e && (e.codigo === 'CANCELADA' || e.name === 'AbortError')) return;
+        zP.innerHTML = ''; var n = K.nodo('<p class="formulario__nota formulario__nota--fuerte"></p>'); n.textContent = (e && e.message) || 'No se pudo revisar.'; zP.appendChild(n);
+      });
+    }
+    function leerLuego(ms) { clearTimeout(espera); espera = setTimeout(leer, ms || 0); }
+    [sS, sE, iF, sSec].forEach(function (x) { x.addEventListener('change', function () { if (x === sS || x === sE) E.grupoModo = ''; leerLuego(0); }); });
+    iG.addEventListener('input', function () { leerLuego(700); });
+    [cLi, cBo].forEach(function (x) { x.addEventListener('change', function () { leerLuego(0); }); });
+
+    function aplicar() {
+      if (ocupado || !plan) return;
+      var p = plan;
+      var seguir = (p.borrar && !p.borrar.nada)
+        ? K.piezas.confirmar.preguntar({ titulo: 'Aplicar y borrar a ' + O().nombre(p.saliente), texto: 'Se aplican ' + p.pendientes + ' cambios y al final se borra a ' + O().nombre(p.saliente) + ' de USUARIOS y SUPERVISORES. Su fila y su firma quedan en la bitácora.', si: 'Aplicar', peligro: true })
+        : Promise.resolve(true);
+      seguir.then(function (si) {
+        if (!si) return;
+        ocupado = true; boton();
+        var d = { saliente: p.saliente, entrante: p.documentoEntrante, fecha: p.fecha, secretaria: E.secretaria, grupoModo: p.grupo.modo,
+                  grupoNuevo: E.grupoNuevo, agregarLista: E.agregarLista, borrarSaliente: E.borrarSaliente, huella: p.huella, motivo: iMo.value.trim() };
+        K.piezas.guardado.mientras(K.pedir('supervisorReemplazar', d, { ms: 90000 }), {
+          titulo: 'Reemplazando al supervisor', sub: O().nombre(p.saliente) + ' → ' + O().nombre(p.entrante),
+          pasos: ['Comprobando que nada cambió…', 'Pasando contratos y cuentas…', 'Grupo, revisores y lista…', 'Apuntando en la bitácora…'],
+          listo: { titulo: 'Reemplazo hecho', paso: 'Queda en la bitácora' }
+        }).then(function (r) {
+          if (r.supervisores) C.supervisores(r.supervisores);
+          if (r.usuarios) C.usuarios(r.usuarios);
+          C.bitacora(r.bitacora);
+          m.cerrar();
+          if (vista._repintar) vista._repintar();
+          K.aviso(r.nada ? 'No había nada pendiente.' : 'Listo: ' + (r.hechos || []).join(' · ') + '.', 'ok', 8000);
+        }, function (e) {
+          ocupado = false;
+          if (e && e.codigo === 'HUELLA' && e.datos && e.datos.plan) { pintar(e.datos.plan); K.aviso(e.message, 'aviso', 8000); return; }
+          boton(); K.aviso((e && e.message) || 'No se pudo aplicar.', 'malo', 9000);
+        });
+      });
+    }
+
+    /* las listas para escoger salen de lo que ya tiene la app; la vista previa llega de fondo */
+    var sup = (D().supervisores || { lista: [] }).lista;
+    if (sup.length) {
+      sS.innerHTML = '<option value="">Escoge quién sale</option>' + sup.map(function (x) { return '<option value="' + K.esc(x.nombre) + '"' + (K.norm(x.nombre) === K.norm(E.saliente) ? ' selected' : '') + '>' + K.esc(O().nombre(x.nombre)) + ' · ' + x.contratos.activos + ' activos de ' + x.contratos.total + '</option>'; }).join('');
+    }
+    boton();
+    leer();
   }
 
   /* ══════════════ MENSAJES Y AVISOS ══════════════ */
@@ -1185,6 +1385,7 @@
     configurar: function (c) { C = c || {}; },
     vista: vista,
     olvidar: function () { SECCION = 'calendario'; BUSCAR = ''; },
+    reemplazo: function (nombre) { reemplazo(nombre || ''); },
     _seccion: function () { return SECCION; },
     _secciones: SECCIONES,
     _seccionDe: seccionDe,
