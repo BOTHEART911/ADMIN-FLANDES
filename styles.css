@@ -3572,3 +3572,11 @@ button.so-per:hover { border-color: var(--k-marca); background: rgba(var(--k-mar
 .ad-rz__grupo { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .ad-rz__gnuevo { margin-top: 8px; }
 .ad-rz .ad-doc__hojas li { font-size: .9rem; }
+
+/* 23/10 · adjuntos de evidencia de la cuenta (hasta 5 por obligación) */
+.ad-adj { margin-top: 8px; }
+.ad-adj__zona { display: grid; gap: 8px; margin-top: 8px; }
+.ad-adj__t { margin: 0 0 4px; font-size: .78rem; font-weight: 800; color: var(--k-apagado); text-transform: uppercase; letter-spacing: .3px; }
+.ad-adj__p { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+.ad-adj__p span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
+.ad-adj__p b { color: var(--k-marca); font-variant-numeric: tabular-nums; }

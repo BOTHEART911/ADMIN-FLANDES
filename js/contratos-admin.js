@@ -168,6 +168,10 @@
         bs.appendChild(bd);
       }
       t.appendChild(bs);
+      /* 23/10 · adjuntos de evidencia por obligación (hasta 5 cada una). Vienen
+         en la misma ficha (sin viaje de más); se abren en el visor del KIT y
+         se precargan al desplegarlos, no antes. */
+      if ((cu.adjuntos || []).length) t.appendChild(adjuntosCuenta(cu));
       sc.appendChild(t);
     });
     arriba(sc);
@@ -188,6 +192,65 @@
       sh.appendChild(n);
     });
     caja.appendChild(sh);
+  }
+
+  /* ══════════════ 23/10 · adjuntos de evidencia de la cuenta ══════════════ */
+  function extAdj(a) { return String(a.ext || (/\.([a-z0-9]{2,5})$/i.exec(a.nombre || '') || [])[1] || '').toLowerCase(); }
+  function icoAdj(e) { return e === 'pdf' ? 'pdf' : (e === 'xls' || e === 'xlsx') ? 'hoja' : 'documento'; }
+  function numAdj(a, k) { var m = /^\s*(\d+\.\d+)\.\s/.exec(a.nombre || ''); return m ? m[1] : a.n + '.' + k; }
+
+  function adjuntosCuenta(cu) {
+    var lista = cu.adjuntos;
+    var cajaA = K.nodo('<div class="ad-adj"></div>');
+    var b = K.nodo('<button type="button" class="kit-btn kit-btn--plano ad-mini ad-adj__abrir">' + K.icono('clip', 13) +
+      ' Adjuntos de evidencia (' + lista.length + ')</button>');
+    var zona = K.nodo('<div class="ad-adj__zona" hidden></div>');
+    var cuenta = {};
+    var items = lista.map(function (a) {
+      cuenta[a.n] = (cuenta[a.n] || 0) + 1;
+      var e = extAdj(a);
+      var x = { titulo: 'Cuenta ' + cu.informe + ' · Obligación ' + a.n + ' · ' + a.nombre, ext: e,
+        enlace: 'https://drive.google.com/file/d/' + a.id + '/view', drive: { id: a.id, nombre: a.nombre },
+        /* si Drive no lo entrega directo, lo trae el CORE por su boleto */
+        cargar: function () {
+          return O().docPorBoleto(a.t, a.nombre).then(function (r) { if (e !== 'pdf') r.tipo = 'otro'; return r; });
+        } };
+      if (e === 'pdf') x.tipo = 'pdf';
+      a._k = cuenta[a.n];
+      return x;
+    });
+    var pintado = false;
+    b.addEventListener('click', function () {
+      K.vibrar(8);
+      zona.hidden = !zona.hidden;
+      b.setAttribute('aria-expanded', String(!zona.hidden));
+      if (pintado || zona.hidden) return;
+      pintado = true;
+      var porObl = {};
+      lista.forEach(function (a, i) { (porObl[a.n] = porObl[a.n] || []).push(i); });
+      Object.keys(porObl).map(Number).sort(function (x, y) { return x - y; }).forEach(function (n) {
+        var g = K.nodo('<div class="ad-adj__obl"><p class="ad-adj__t">Obligación ' + n + '</p><div class="cf-chips"></div></div>');
+        porObl[n].forEach(function (i) {
+          var a = lista[i], e = extAdj(a);
+          var p = K.nodo('<button type="button" class="kit-pastilla ad-adj__p">' + K.icono(icoAdj(e), 14) +
+            ' <b>' + K.esc(numAdj(a, a._k)) + '</b> <span></span></button>');
+          p.querySelector('span').textContent = String(a.nombre || '').replace(/^\s*\d+\.\d+\.\s+/, '');
+          p.title = a.nombre;
+          p.addEventListener('click', function () { K.vibrar(6); if (K.piezas.visor) K.piezas.visor.abrir(items, { indice: i }); });
+          g.querySelector('.cf-chips').appendChild(p);
+        });
+        zona.appendChild(g);
+      });
+      /* precarga al desplegar: PDF directo de Drive (llave) y el lector de Word/Excel */
+      lista.forEach(function (a) {
+        var e = extAdj(a);
+        if (e === 'pdf') { if (K.drive && K.drive.precargar) K.drive.precargar(a.id); }
+        else if (K.piezas.visor && K.piezas.visor.precalentarOficina) K.piezas.visor.precalentarOficina(e);
+      });
+    });
+    cajaA.appendChild(b);
+    cajaA.appendChild(zona);
+    return cajaA;
   }
 
   function etiquetaCanal(c) {
