@@ -69,7 +69,7 @@
   var ARRANQUE = null;    /* lo que trajo 'inicio' */
   var VERSIONES = {};     /* APP -> versión publicada (de su version.js) */
 
-  var MODULOS = ['CONFIG', 'USUARIOS', 'BITACORA', 'RECORDATORIOS', 'SOPORTES', 'COMUNICADOS', 'MIBOT', 'TABLERO', 'TUTORIALES'];
+  var MODULOS = ['CONFIG', 'USUARIOS', 'BITACORA', 'RECORDATORIOS', 'SOPORTES', 'COMUNICADOS', 'MIBOT', 'TABLERO', 'TUTORIALES', 'ASISTENTE_ADMIN'];
 
   /* Las siete apps con la imagen que las representa en ALCALDIA-MEDIOS */
   var APPS = [
@@ -461,6 +461,8 @@
     rendimiento: function () { window.TABLERO.rendimiento(); },
     /* ajuste 4 · los tutoriales en video de CONTRATISTA */
     tutoriales: function () { window.TUTORIALES.vista(); },
+    /* 24/10 · el asistente de ayuda de las apps (solo DEV) */
+    asistente: function () { window.ASISTENTE_ADMIN.vista(); },
     /* 10.2 · contratistas (las vistas de CONTRATACION) */
     contratistas: function (sub) { window.CONTRATISTAS.lista(sub); },
     contratista: function (sub) { window.CONTRATISTAS.detalle(sub); },
@@ -489,6 +491,7 @@
     tablero: 'TABLERO DEL ECOSISTEMA',
     rendimiento: 'TABLERO DE RENDIMIENTO',
     tutoriales: 'TUTORIALES EN VIDEO',
+    asistente: 'ASISTENTE DE AYUDA',
     contratistas: 'CONTRATISTAS',
     contratista: 'DETALLES DEL CONTRATISTA',
     agregar: 'AGREGAR CONTRATISTA',
@@ -503,6 +506,7 @@
 
   var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora', recordatorios: 'configuracion', soportes: 'soportes', atrasos: 'configuracion', agenda: 'configuracion',
     comunicados: 'comunicados', mibot: 'miBot', tablero: 'dashboard', rendimiento: 'dashboard', tutoriales: 'tutoriales',
+    asistente: 'asistenteDev',   /* 24/10 · ningún rol tiene esta vista: solo DEV entra */
     contratistas: 'contratistas', contratista: 'contratistas', agregar: 'agregarContratista', masiva: 'agregarContratista',
     adicion: 'adicion', cesion: 'cesion', suspension: 'suspension', editar: 'editarContratista',
     novedad: 'contratistas', datos: 'contratistas' };
@@ -593,6 +597,9 @@
     /* ajuste 4 · el interruptor y los videos de TUTORIALES DE USO del contratista */
     if (puede('tutoriales')) tT.push(acc.tutoriales = accesoIcono('TUTORIALES EN VIDEO', 'Enciende o apaga los tutoriales del contratista; el video de Drive y la portada de cada uno', 'play',
       function () { irA('tutoriales'); }));
+    /* 24/10 · ASISTENTE DE AYUDA: lo que responde el robot de las apps (solo DEV) */
+    if (K.norm((YO && YO.rol) || '') === 'DEV') tT.push(acc.asistente = accesoIcono('ASISTENTE DE AYUDA', 'Lo que responde el robot de las apps: temas, preguntas por enseñar y probar una frase', 'robot',
+      function () { irA('asistente'); }));
     if (puede('miBot')) tT.push(acc.bot = acceso('MI BOT', 'El bot de WhatsApp: estado, QR, reiniciar, lista negra, silenciar los avisos y últimos envíos', 'img/whatsapp.webp',
       function () { irA('mibot'); }));
     if (tT.length) bloque('TABLEROS Y AVISOS', tT);
