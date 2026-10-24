@@ -524,6 +524,8 @@
     olvidar: function () { D = null; F = { estado: '', app: '', buscar: '', desde: '', hasta: '' }; },
     /* lo que llega de otra vista (los documentos rehechos de una cuenta) */
     recibir: function (x) { if (D) { fundir(x); alInicio(null); } },
+    /* 24/10 · el asistente lleva aquí con la pastilla ya puesta (por atender, reabiertos…) */
+    filtrar: function (f) { f = f || {}; F.estado = f.estado || ''; F.app = f.app || ''; F.buscar = ''; },
     _datos: function () { return D; }, _filtradas: filtradas, _cifras: cifras, _filtros: function () { return F; }
   };
 }());

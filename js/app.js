@@ -102,11 +102,15 @@
   var DATOS_CAMPOS = ['cfg', 'festivos', 'supervisores', 'secretarias', 'usuarios', 'roles', 'rolesMultiples', 'apps', 'avisos'];
   /* el recuerdo guarda solo lo ligero: los datos de las vistas se piden frescos en cada apertura */
   function soloLigero(d) {
-    if (!d || !d.ligero) return d;
+    if (!d) return d;
     var o = {}, k;
-    for (k in d) if (Object.prototype.hasOwnProperty.call(d, k) && DATOS_CAMPOS.indexOf(k) < 0 && k !== 'bitacora') o[k] = d[k];
+    /* 24/10 · la base del asistente no va al recuerdo: ya queda en el teléfono con su sello */
+    for (k in d) if (Object.prototype.hasOwnProperty.call(d, k) && k !== 'asistente' && (!d.ligero || (DATOS_CAMPOS.indexOf(k) < 0 && k !== 'bitacora'))) o[k] = d[k];
     return o;
   }
+  /** 24/10 · el sello de la base del asistente que ya tiene el teléfono (la base viaja solo si cambió) */
+  function selloAsistente() { return (K.piezas.asistente && K.piezas.asistente.selloGuardado && K.piezas.asistente.selloGuardado()) || ''; }
+  function datosInicio() { return { ligero: true, selloAsistente: selloAsistente() }; }
   function tieneDatos() { return !!(ARRANQUE && ARRANQUE.usuarios && ARRANQUE.cfg); }
   function fundirDatos(d) {
     if (!ARRANQUE || !d) return;
@@ -152,6 +156,8 @@
     }
     YO = d.yo || YO;
     if (d.personas && K.piezas.personas) K.piezas.personas.cargar(d.personas);
+    /* 24/10 · ASISTENTE: la base viaja SOLO si cambió su sello y queda en el teléfono */
+    if (d.asistente && d.asistente.temas && K.piezas.asistente) K.piezas.asistente.base(d.asistente.temas, d.asistente.sello);
     if (d.push && K.piezas.avisos && K.piezas.avisos.configurar) K.piezas.avisos.configurar(d.push);
     if (d.config && K.piezas.guia) K.piezas.guia.configurar(d.config);   /* guías rápidas: el id del PDF de cada app llega en la configuración pública */
     if (d.config && K.piezas.creditos && K.piezas.creditos.configurar) K.piezas.creditos.configurar(d.config);
@@ -173,7 +179,7 @@
       ? K.piezas.esqueletos.poner(app, { forma: 'ficha', cuantos: 1, sitio: 'reemplaza', espera: 'Cargando Admin Flandes' })
       : function () {};
 
-    return (yaVino ? Promise.resolve(yaVino) : recordado ? Promise.resolve(recordado) : leer('inicio', { ligero: true })).then(function (d) {
+    return (yaVino ? Promise.resolve(yaVino) : recordado ? Promise.resolve(recordado) : leer('inicio', datosInicio())).then(function (d) {
       recibir(d);
       if (K.recuerdo) { if (recordado) setTimeout(refrescarArranque, 30); else K.recuerdo.guardar(soloLigero(d)); }
       quitar();
@@ -186,7 +192,7 @@
   /* 25/09 · el 'inicio' de verdad, por detrás: se aplica, se guarda y, si la
      persona sigue en el inicio, se vuelve a pintar con lo nuevo. */
   function refrescarArranque() {
-    leer('inicio', { ligero: true }).then(function (d) {
+    leer('inicio', datosInicio()).then(function (d) {
       return arranque(false, { arranque: d, refresco: true });
     }).then(function () {
       var v = String(location.hash || '').replace(/^#\/?/, '').split('/')[0] || 'inicio';
@@ -220,10 +226,15 @@
         imagen: M.APP_ICON || 'img/icono-512.png',
         arranqueEnLogin: true,
         /* 07/10 · el login trae el inicio LIGERO (con un CORE viejo, el de siempre) */
-        datosArranque: function () { return { ligero: true }; },
+        datosArranque: datosInicio,   /* 24/10 · con el sello del asistente */
         comprobar: function (login) { return arranque(true, login).then(function (d) { return d.yo; }); },
         alEntrar: arrancar
       });
+      /* 24/10 · el asistente también en la entrada (olvidé mi contraseña,
+         cómo instalo la app), sin datos de estado */
+      if (K.piezas.asistente && window.ADMIN_ASISTENTE && !K.token()) {
+        K.piezas.asistente.enEntrada(window.ADMIN_ASISTENTE.entrada);
+      }
     });
   });
 
@@ -284,7 +295,7 @@
       /* 07/10 · Refrescar: cada vista trae SOLO lo suyo, en un viaje.
          'inicio' → las cifras (ligero) · 'bitacora' → sus filas · sin nada → lo de CONFIGURACIÓN y USUARIOS */
       recargar: function (que) {
-        if (que === 'inicio') return leer('inicio', { ligero: true }).then(function (d) { if (K.recuerdo) K.recuerdo.guardar(soloLigero(d)); recibir(d); return d; });
+        if (que === 'inicio') return leer('inicio', datosInicio()).then(function (d) { if (K.recuerdo) K.recuerdo.guardar(soloLigero(d)); recibir(d); return d; });
         if (que === 'bitacora') return traerBitacora(true);
         return leer('inicio', { soloDatos: true }).then(function (d) { fundirDatos(d); return ARRANQUE; });
       },
@@ -295,6 +306,7 @@
 
   function arrancar(yo) {
     YO = yo || {};
+    if (K.piezas.asistente) K.piezas.asistente.salirEntrada();   /* 24/10 */
     montarBanner();
 
     if (K.piezas.avisos) {
@@ -424,6 +436,7 @@
   function salir() {
     if (K.piezas.avisos) K.piezas.avisos.olvidar();
     if (K.piezas.insights) K.piezas.insights.quitar();
+    if (K.piezas.asistente) K.piezas.asistente.olvidar();   /* 24/10 · la conversación no pasa a otra sesión */
     MODULOS.forEach(function (m) { if (window[m] && window[m].olvidar) window[m].olvidar(); });
     if (window.CONTRATISTAS && window.CONTRATISTAS.olvidar) window.CONTRATISTAS.olvidar();
     if (window.ATRASOS) window.ATRASOS.olvidar();
@@ -805,6 +818,20 @@
     b.addEventListener('click', function () { K.vibrar(8); al(); });
     return b;
   }
+
+  /* 24/10 · lo que el asistente (js/asistente-app.js) lee de la app, sin viajar */
+  window.ADMIN_APP = {
+    arranque: function () { return ARRANQUE; },
+    yo: function () { return YO || {}; },
+    puede: puede,
+    permiso: function (v) { return PERMISO[v] || v; },
+    cifras: function () { return cifrasDe(ARRANQUE || {}); },
+    versiones: function () { return VERSIONES; },
+    apps: function () { return APPS; },
+    abrirFoto: abrirFoto,
+    vistaActual: vistaActual,
+    irA: irA
+  };
 
   /* ══════════════ auxiliares ══════════════ */
 

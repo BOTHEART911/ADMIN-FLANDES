@@ -39,6 +39,17 @@
       datos: ['estadoCuenta', 'estadoCuentaCorto', 'queMeToca', 'cuentaPendiente', 'reporteBloqueo', 'devolucion', 'pagado', 'quienMeAtiende',
         'supervisor', 'contratoResumen', 'obligaciones', 'contratosCert', 'avisosTelefono', 'noLeidos', 'comunicadosSinLeer',
         'pctSalud', 'pctPension', 'pctArl', 'contrato', 'estadoContrato', 'nombre']
+    },
+    /* 24/10 · entrega 7 y 8 (sacados de su js/asistente-app.js y su base) */
+    COMUNICACIONES: {
+      vistas: ['inicio', 'solicitudes', 'repartir', 'solicitud', 'informes', 'solicitantes', 'nueva', 'comunicados', 'directorio', 'entrada'],
+      acciones: ['ir:inicio', 'ir:abiertas', 'ir:vencidas', 'ir:enProceso', 'ir:realizadas', 'ir:mias', 'ir:sinAsignar', 'ir:externas', 'ir:repartir', 'ir:nueva', 'ir:registros', 'ir:comunicados', 'ir:directorio', 'ir:solicitantes', 'ir:solActivos', 'guia', 'soporte', 'foto', 'clave', 'instalar', 'olvide', 'documento'],
+      datos: ['queMeToca', 'abiertas', 'proximas', 'vencidas', 'hoy', 'sinAsignar', 'cargaEquipo', 'aQuien', 'mesHechas', 'mias', 'externas', 'masPiden', 'falta', 'periodo', 'comunicados', 'dirIncompletos', 'solNunca', 'solQuienPide', 'permisos', 'avisosTelefono', 'nombre']
+    },
+    ADMIN: {
+      vistas: ['inicio', 'soportes', 'usuarios', 'atrasos', 'configuracion', 'tablero', 'agenda', 'recordatorios', 'bitacora', 'rendimiento', 'comunicados', 'mibot', 'tutoriales', 'contratistas', 'contratista', 'agregar', 'masiva', 'novedad', 'asistente', 'entrada'],
+      acciones: ['ir:inicio', 'ir:configuracion', 'ir:cfgCalendario', 'ir:cfgCatalogos', 'ir:cfgSupervisores', 'ir:cfgGrupos', 'ir:cfgPlantillas', 'ir:cfgGuias', 'ir:cfgMensajes', 'ir:cfgMantenimiento', 'ir:cfgMarca', 'ir:usuarios', 'ir:usBloqueados', 'ir:usSinCelular', 'ir:usSinCorreo', 'ir:usClaveDoc', 'ir:usSinContrato', 'ir:soportes', 'ir:sopAbiertos', 'ir:sopReabiertos', 'ir:sopNuevo', 'ir:atrasos', 'ir:agenda', 'ir:bitacora', 'ir:registros', 'ir:recordatorios', 'ir:comunicados', 'ir:mibot', 'ir:tablero', 'ir:rendimiento', 'ir:tutoriales', 'ir:asistente', 'ir:contratistas', 'ir:ctActivos', 'ir:agregar', 'ir:masiva', 'guia', 'soporte', 'foto', 'clave', 'instalar', 'olvide', 'documento'],
+      datos: ['queMeToca', 'resumen', 'versiones', 'mantenimiento', 'soportes', 'reabiertos', 'atrasados', 'bloqueados', 'sinCelular', 'sinCorreo', 'claveDoc', 'supSinGrupo', 'festivos', 'sinGuia', 'cambiosHoy', 'bot', 'asistente', 'permisos', 'avisosTelefono', 'nombre']
     }
   };
 
@@ -356,6 +367,17 @@
   window.ASISTENTE_ADMIN = {
     configurar: function (c) { C = c || {}; },
     vista: vista,
+    /* 24/10 · entrega 8: el asistente de ADMIN trae aquí al DEV con la frase que no supo
+       responder, para enseñársela en Probar (la vista se pinta al llegar) */
+    probar: function (o) {
+      o = o || {};
+      F.pestana = 'probar';
+      if (o.app) F.app = String(o.app).toUpperCase();
+      if (o.frase !== undefined) PRUEBA.frase = String(o.frase || '');
+      var vs = catalogo(F.app).vistas;
+      PRUEBA.vista = o.vista && vs.indexOf(o.vista) >= 0 ? o.vista : (vs.indexOf('inicio') >= 0 ? 'inicio' : (vs[0] || 'inicio'));
+      PRUEBA.estado = 'ACTIVO';
+    },
     _datos: function () { return D; }
   };
 }());

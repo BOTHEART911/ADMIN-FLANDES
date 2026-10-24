@@ -529,6 +529,19 @@
   var TITULOS = { inicio: 'Tu inicio', comunicados: 'Comunicados', mibot: 'Mi bot', tutoriales: 'Tutoriales en video', tablero: 'Tablero del ecosistema', rendimiento: 'Tablero de rendimiento', atrasos: 'Cuentas atrasadas', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora', recordatorios: 'Recordatorios', soportes: 'Soportes',
                   novedad: 'Novedades del contrato', datos: 'Todos los datos del contrato' };
   TITULOS.agenda = 'Agenda de revisión';
+
+  /* 24/10 · entrega 8: ASISTENTE DE AYUDA (solo DEV) */
+  GUIAS.asistente = function () {
+    var d = window.ASISTENTE_ADMIN && window.ASISTENTE_ADMIN._datos();
+    var r = (d && d.resumen) || null;
+    return {
+      guia: 'Aquí entrenas el robot de las siete apps. **Temas**: lo que responde cada app (frases de ejemplo, respuesta y a dónde lleva). **Por enseñar**: lo que quedó sin respuesta o con 👎; tócalo y escoge el tema. **Probar**: escribe una frase y ves qué respondería el teléfono.' +
+        (r ? ' Van **' + K.numero(r.total || 0) + '** preguntas y **' + K.numero(r.porEnsenar || 0) + '** por enseñar.' : '') +
+        ' Cada cambio sube el sello de su app y llega a los teléfonos en la siguiente apertura.',
+      botones: []
+    };
+  };
+  TITULOS.asistente = 'Asistente de ayuda';
   if (window.AYUDA_CONTRATOS) window.AYUDA_CONTRATOS.sumar(GUIAS, TITULOS);
 
   function montar(vista, extra) {
@@ -538,6 +551,7 @@
     var base = g();
     var cfg = {
       vista: (extra && extra.vista) || TITULOS[vista] || vista,
+      clave: vista,   /* 24/10 · el asistente sabe en qué vista está (preguntas frecuentes) */
       guia: function () { return g().guia; },
       botones: base.botones || [],
       alto: !!base.alto
