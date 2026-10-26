@@ -44,6 +44,7 @@ var ARMAZON = [
   /* Fase 10 */
   './js/oficina.js',
   './js/configuracion.js',
+  './js/planpagos-admin.js',
   './js/usuarios.js',
   './js/bitacora.js',
   /* 10.3 */

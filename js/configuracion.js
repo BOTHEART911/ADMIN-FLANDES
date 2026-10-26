@@ -46,6 +46,7 @@
     { id: 'guias', t: 'Guías rápidas', icono: 'pdf', p: 'El PDF instructivo de cada app y de la web de Solicitud de Prensa: es lo que baja la opción "Descargar guía rápida" del menú. Para reemplazar una guía, sube el PDF nuevo a la carpeta GUÍAS RÁPIDAS y pega aquí su enlace o id: el CORE comprueba que sea un PDF y lo comparte con enlace. Las apps no se vuelven a publicar.' },
     { id: 'mensajes', t: 'Mensajes y avisos', icono: 'campana', p: 'Lo que dice cada aviso del ecosistema (push, WhatsApp y correo) y por qué canal sale. También los mensajes de alta, bienvenida y recuperación de contraseña.' },
     { id: 'mantenimiento', t: 'Mantenimiento', icono: 'candado', p: 'Cierra una app o todas con un mensaje (tú sigues entrando como DEV), las direcciones y la versión publicada de cada app, medios, sonidos, claves, sesión y bot.' },
+    { id: 'planpagos', t: 'Plan de pagos', icono: 'pdf', p: 'Los documentos que el contratista une en UN solo PDF para el Plan de pagos del SECOP II (UNIFICAR Y DESCARGAR, en Estado de cuenta) y su orden. Agrega un documento nuevo, cámbialo de puesto o apágalo; vale desde que guardas.' },
     { id: 'marca', t: 'Marca', icono: 'lapiz', p: 'Nombres, NIT y firmas que salen en los documentos y en el pie de las siete apps.' },
     { id: 'otras', t: 'Otras llaves', icono: 'llave', p: 'El resto de CONFIG. Las contables y las de Tesorería se editan en su app; aquí solo si hace falta corregir el valor a mano.' }
   ];
@@ -128,7 +129,7 @@
   };
 
   /* Llaves que tienen su propia pantalla y no se pintan sueltas */
-  var PROPIAS = ['FESTIVOS', 'FESTIVOS_AJUSTES', 'CORTES_POR_MES', 'CIERRE_VIGENCIA', 'CIERRE_PLAN', 'MANTENIMIENTO', 'GRUPOS_SUPERVISOR',
+  var PROPIAS = ['PLAN_PAGOS_LISTA', 'FESTIVOS', 'FESTIVOS_AJUSTES', 'CORTES_POR_MES', 'CIERRE_VIGENCIA', 'CIERRE_PLAN', 'MANTENIMIENTO', 'GRUPOS_SUPERVISOR',
                  'PLANTILLAS', 'CANALES_POR_TIPO', 'SUPERVISION_ALCANCE', 'DECISION_USUARIOS',
                  /* 10.3 · tienen su propia vista: RECORDATORIOS */
                  'RECORDATORIOS', 'NOTIFICACION_FINAL',
@@ -253,6 +254,7 @@
       if (SECCION === 'supervisores') zona.appendChild(bloqueSupervisores());
       if (SECCION === 'mensajes') { zona.appendChild(bloqueAlertaBot()); zona.appendChild(bloqueAvisos()); }
       if (SECCION === 'mantenimiento') { zona.appendChild(bloqueMantenimiento()); }
+      if (SECCION === 'planpagos' && window.PLANPAGOS_ADMIN) zona.appendChild(window.PLANPAGOS_ADMIN.bloque());   /* 26/10 */
       var llaves = cfg().filter(function (it) { return seccionDe(it.llave) === SECCION; });
       if (SECCION === 'catalogos') llaves.sort(function (a, b) { return (a.bloqueada ? 1 : 0) - (b.bloqueada ? 1 : 0); });
       if (llaves.length) {
@@ -277,7 +279,7 @@
     l.forEach(function (it) {
       if (PROPIAS.indexOf(it.llave) >= 0) {
         var s = { FESTIVOS: 'calendario', FESTIVOS_AJUSTES: 'calendario', CORTES_POR_MES: 'calendario', CIERRE_VIGENCIA: 'calendario', CIERRE_PLAN: 'calendario', MANTENIMIENTO: 'mantenimiento',
-                  GRUPOS_SUPERVISOR: 'supervisores', PLANTILLAS: 'mensajes', CANALES_POR_TIPO: 'mensajes', ALERTA_BOT: 'mensajes' }[it.llave];
+                  GRUPOS_SUPERVISOR: 'supervisores', PLAN_PAGOS_LISTA: 'planpagos', PLANTILLAS: 'mensajes', CANALES_POR_TIPO: 'mensajes', ALERTA_BOT: 'mensajes' }[it.llave];
         var t = K.nodo('<article class="kit-tarjeta cf-item ad-llave ad-llave--propia"><div class="cf-item__cab"><b></b><code></code></div><p class="formulario__nota"></p></article>');
         t.querySelector('b').textContent = etiqueta(it.llave);
         t.querySelector('code').textContent = it.llave;
