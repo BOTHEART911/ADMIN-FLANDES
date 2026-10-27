@@ -161,7 +161,9 @@
     SOLICITUD_CONTRATACION_NUEVA: 'Solicitud a Contratación · aviso al grupo', SOLICITUD_CONTRATACION_RESPUESTA: 'Solicitud a Contratación · respuesta',
     SOLICITUD_CONTRATACION_GESTION: 'Solicitud a Contratación · gestión registrada',
     /* 27/09 · correos de alerta del bot (van a los 3 correos de ALERTA BOT DESCONECTADO) */
-    BOT_DESCONECTADO: 'Bot desconectado · correo de alerta', BOT_RECONECTADO: 'Bot reconectado · correo de alerta'
+    BOT_DESCONECTADO: 'Bot desconectado · correo de alerta', BOT_RECONECTADO: 'Bot reconectado · correo de alerta',
+    /* 27/10 · Supervisión, al aprobar: lo que sugirió el revisor para la próxima cuenta (firma el supervisor) */
+    RECOMENDACIONES_PROXIMA_CUENTA: 'Recomendaciones para tu próxima cuenta (Supervisión, al aprobar)'
   };
   /* Los avisos del bot son solo correo y tienen sus propios marcadores */
   function esAvisoBot(t) { return t === 'BOT_DESCONECTADO' || t === 'BOT_RECONECTADO'; }
@@ -1328,6 +1330,7 @@
     f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(bot ? MARCADORES_BOT : (nativo ? MARCADORES_COPIA : (deCont ? MARCADORES_CONTRATACION : (rec ? MARCADORES_RECORDAR : MARCADORES)))) + '</code>. El que no venga en el aviso se borra solo. Un texto que dejes <b>vacío</b> sale con el texto por defecto.' +
       (rec ? ' Es un <b>recordatorio</b>: lo firma <b>{firma}</b> con <b>{cargo}</b> (en SUPERVISIÓN el supervisor del contrato; en ADMIN la oficina de la llave RECORDAR). <b>{plazo}</b> dice si la cuenta ya está vencida y cuántos días hábiles lleva, o cuántos le quedan' +
         (tipo === 'RECORDAR_ATRASO' ? '; <b>{cuentas}</b> trae una línea por cada cuenta atrasada con sus días.' : (tipo === 'RECORDAR_CORRECCION' ? '; <b>{pendiente}</b> trae el motivo o los soportes que faltan.' : '.')) : '') +
+      (tipo === 'RECOMENDACIONES_PROXIMA_CUENTA' ? ' Sale cuando el supervisor <b>aprueba</b> y marca "Enviar al contratista": <b>{recomendaciones}</b> trae el texto (una por línea), <b>{informe}</b> la cuenta aprobada y <b>{siguiente}</b> la que va a empezar; lo firma <b>{supervisor}</b>. Queda también en su buzón y en la tarjeta del borrador.' : '') +
       (bot ? ' Este aviso sale <b>solo por correo</b> a los correos de la tarjeta <b>ALERTA DE BOT DESCONECTADO</b> (arriba).' : '') +
       (deCont ? ' Lo firma <b>{revisor}</b>: el usuario de Contratación que aprobó o devolvió. <b>{motivo}</b> pone cada motivo en su línea con “- ” y <b>{motivo_negrilla}</b> igual pero en negrilla.' : '') +
       (nativo ? ' Es el texto del botón <b>NOTIFICAR</b> del detalle de una solicitud EN PROCESO en COMUNICACIONES: se abre <b>tu WhatsApp</b> con el número del asignado y este texto listo para enviar (no sale por el bot). {quien} es quien notifica y {entrega} la fecha de entrega o publicación. Una línea que queda sin dato se quita sola.' :
