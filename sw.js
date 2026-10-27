@@ -103,7 +103,7 @@ var ARMAZON = [
   /* 5.3 · revisión de cuentas */
   './kit/carrusel.js', './kit/carrusel.css',
   /* 5.4 · reporte en PDF y Excel */
-  './kit/exportar.js', './kit/exportar.css', './kit/gerencial.js',
+  './kit/exportar.js', './kit/exportar.css', './kit/gerencial.js', './kit/informe-cuentas.js',
   /* 10.5 · compartir nativo */
   './kit/compartir.js',
   /* 24/10 · entrega 8: el asistente de ayuda (pieza del kit, Gemini, su base y su adaptador) */

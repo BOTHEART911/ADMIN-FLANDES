@@ -624,6 +624,9 @@
       caja.appendChild(sup);
     }
 
+    /* 27/10 · el informe gerencial del contratista (PDF y Excel), como en Supervisión */
+    if (f.id) caja.appendChild(tarjetaInforme(f.id));
+
     var rej = K.nodo('<div class="ct-ficha__rej"></div>');
     caja.appendChild(rej);
 
@@ -701,6 +704,45 @@
     }
 
     K.piezas.creditos.montar(caja);
+  }
+
+  /* 27/10 · INFORME DEL CONTRATISTA. ADMIN ve cualquier contrato (ruta
+     informeContratista de ADMIN en el CORE). Navegación primero: la tarjeta se
+     pinta al instante; jsPDF, la marca y la pieza se adelantan en reposo; los
+     datos se piden en UN viaje al tocar y se recuerdan 5 minutos. */
+  var INFORMES = {};
+  function tarjetaInforme(id) {
+    var t = K.nodo('<section class="kit-tarjeta grupo ct-informe"><h3 class="grupo__t">Informe del contratista</h3>' +
+      '<p class="formulario__nota">PDF gerencial con el análisis de sus cuentas (cuantificación, copia entre cuentas, evidencias, tiempos, devoluciones y alertas), conclusiones, recomendaciones y las actividades completas como anexo. El Excel trae una fila por cuenta con todas las columnas.</p>' +
+      '<div class="rp-bajar"><button type="button" class="kit-btn kit-btn--marca" data-f="pdf">' + K.icono('pdf', 16) + ' Informe gerencial (PDF)</button>' +
+      '<button type="button" class="kit-btn kit-btn--plano" data-f="xlsx">' + K.icono('hoja', 16) + ' Excel</button></div></section>');
+    var X = K.piezas.exportar;
+    try {
+      if (X && X.calentarPDF) {
+        X.calentarPDF();
+        var pieza = function () { X.cargarInformeCuentas().catch(function () {}); };
+        if (window.requestIdleCallback) window.requestIdleCallback(pieza, { timeout: 3000 }); else setTimeout(pieza, 900);
+      }
+    } catch (e) { /* calentar nunca rompe la ficha */ }
+    t.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (b.disabled) return;
+        b.disabled = true; b.classList.add('kit-ocupado');
+        var t0 = Date.now(), m = INFORMES[id];
+        var datos = (m && Date.now() - m.t < 300000) ? Promise.resolve(m.d) :
+          K.pedir('informeContratista', { idContrato: id }, { ms: 60000 }).then(function (d) { INFORMES[id] = { t: Date.now(), d: d }; return d; });
+        Promise.all([datos, X.cargarInformeCuentas()]).then(function (r) {
+          var d = r[0], IC = r[1], t1 = Date.now();
+          if (!(d.cuentas || []).length) { K.aviso('Este contrato todavía no tiene cuentas.', 'aviso', 4000); return null; }
+          return Promise.resolve(b.getAttribute('data-f') === 'pdf' ? IC.aGerencial(d) : IC.aExcel(d)).then(function (o) {
+            try { console.info('[informe contratista]', { msDatos: t1 - t0, msArmar: Date.now() - t1, total: Date.now() - t0, salida: o }); } catch (e) {}
+            K.aviso(o === 'csv' ? 'No cargó Excel: se descargó en CSV (Excel lo abre).' : (o === 'impresion' ? 'Guárdalo como PDF desde la ventana de impresión.' : 'Descargado.'), 'ok', 3500);
+          });
+        }).catch(function (e) { K.aviso((e && e.message) || 'No se pudo armar el informe.', 'malo', 6000); })
+          .then(function () { b.disabled = false; b.classList.remove('kit-ocupado'); });
+      });
+    });
+    return t;
   }
 
   function plata(v) { return (v && v.texto) ? ('$ ' + v.texto) : ''; }
