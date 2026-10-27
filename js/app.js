@@ -69,7 +69,7 @@
   var ARRANQUE = null;    /* lo que trajo 'inicio' */
   var VERSIONES = {};     /* APP -> versión publicada (de su version.js) */
 
-  var MODULOS = ['CONFIG', 'USUARIOS', 'BITACORA', 'RECORDATORIOS', 'SOPORTES', 'COMUNICADOS', 'MIBOT', 'TABLERO', 'TUTORIALES', 'ASISTENTE_ADMIN'];
+  var MODULOS = ['CONFIG', 'USUARIOS', 'BITACORA', 'RECORDATORIOS', 'SOPORTES', 'COMUNICADOS', 'MIBOT', 'TABLERO', 'TUTORIALES', 'ASISTENTE_ADMIN', 'INFORME'];
 
   /* Las siete apps con la imagen que las representa en ALCALDIA-MEDIOS */
   var APPS = [
@@ -479,6 +479,7 @@
     /* 10.2 · contratistas (las vistas de CONTRATACION) */
     contratistas: function (sub) { window.CONTRATISTAS.lista(sub); },
     contratista: function (sub) { window.CONTRATISTAS.detalle(sub); },
+    informe: function (sub) { window.INFORME.vista(sub); },   /* 27/10 · informe del contratista */
     agregar: function () { window.GESTION.agregar(); },
     adicion: function (sub) { window.GESTION.adicion(sub); },
     cesion: function (sub) { window.GESTION.cesion(sub); },
@@ -507,6 +508,7 @@
     asistente: 'ASISTENTE DE AYUDA',
     contratistas: 'CONTRATISTAS',
     contratista: 'DETALLES DEL CONTRATISTA',
+    informe: 'INFORME DEL CONTRATISTA',
     agregar: 'AGREGAR CONTRATISTA',
     adicion: 'ADICIÓN',
     cesion: 'CESIÓN',
@@ -520,7 +522,7 @@
   var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora', recordatorios: 'configuracion', soportes: 'soportes', atrasos: 'configuracion', agenda: 'configuracion',
     comunicados: 'comunicados', mibot: 'miBot', tablero: 'dashboard', rendimiento: 'dashboard', tutoriales: 'tutoriales',
     asistente: 'asistenteDev',   /* 24/10 · ningún rol tiene esta vista: solo DEV entra */
-    contratistas: 'contratistas', contratista: 'contratistas', agregar: 'agregarContratista', masiva: 'agregarContratista',
+    contratistas: 'contratistas', contratista: 'contratistas', informe: 'contratistas', agregar: 'agregarContratista', masiva: 'agregarContratista',
     adicion: 'adicion', cesion: 'cesion', suspension: 'suspension', editar: 'editarContratista',
     novedad: 'contratistas', datos: 'contratistas' };
 
@@ -540,7 +542,7 @@
     K.piezas.banner.vista(titulos[v]);
     var resto = partes.slice(1).join('/');
     /* la ficha vuelve a la lista; lo que sale de una ficha vuelve a esa ficha */
-    var FICHA_DE = { adicion: 1, cesion: 1, suspension: 1, editar: 1, novedad: 1, datos: 1 };
+    var FICHA_DE = { adicion: 1, cesion: 1, suspension: 1, editar: 1, novedad: 1, datos: 1, informe: 1 };
     K.piezas.banner.atras(v === 'inicio' ? null : function () {
       if (FICHA_DE[v]) irA('contratista/' + partes[1]);
       else if (v === 'contratista' || v === 'agregar' || v === 'masiva') irA('contratistas');

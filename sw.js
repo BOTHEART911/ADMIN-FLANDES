@@ -61,6 +61,7 @@ var ARMAZON = [
   './js/asistente.js',   /* 24/10 · vista ASISTENTE DE AYUDA (solo DEV) */
   /* 10.2 · contratistas */
   './js/contratistas.js',
+  './js/informe.js',
   './js/gestion.js',
   './js/masiva.js',
   './js/contratos-admin.js',
