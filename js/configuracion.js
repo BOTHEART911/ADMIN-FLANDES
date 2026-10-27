@@ -146,7 +146,7 @@
     /* 01/10 · Contratación (segundo filtro) firma con el revisor que decidió */
     CUENTA_DEVUELTA_CONTRATACION: 'Cuenta devuelta por Contratación', GRUPO_DEVUELTA_CONTRATACION: 'Cuenta devuelta por Contratación · aviso al grupo del supervisor',
     CUENTA_EN_CONTABILIDAD: 'Cuenta en Contabilidad', ORDEN_PAGO: 'Orden de pago', EGRESO: 'Egreso', PAGO: 'Pago',
-    CONTRATO_NUEVO: 'Contrato nuevo', CLAVE_RECUPERADA: 'Contraseña recuperada', USUARIO_ALTA: 'Alta de usuario',
+    CONTRATO_NUEVO: 'Contrato nuevo (único mensaje al crear el contratista · {acceso} = con qué contraseña entra)', CLAVE_RECUPERADA: 'Contraseña recuperada', USUARIO_ALTA: 'Alta de usuario',
     CONTRATO_ADICION: 'Adición del contrato', CONTRATO_CESION: 'Cesión del contrato', CONTRATO_SUSPENSION: 'Suspensión del contrato',
     REQUERIMIENTO: 'Requerimiento de la oficina', CONTRATO_OTROSI: 'Otrosí del contrato', PLAN_POR_CORREGIR: 'Plan de pagos por corregir',
     SOLICITUD_COMUNICACIONES: 'Solicitud a Comunicaciones',
@@ -179,7 +179,7 @@
   /* 21/10 · {plazo}: "lleva N días hábiles de vencida…" o "le quedan N días hábiles…"; {firma} y {cargo}: quien envía */
   function esAvisoRecordar(t) { return /^RECORDAR_/.test(t); }
   var MARCADORES_RECORDAR = '{nombre} {contrato} {informe} {total} {estado} {periodo} {limite} {dias} {plazo} {plazo_corto} {pendiente} {cuentas} {cantidad} {cantidad_texto} {cuenta} {plazo_regla} {firma} {cargo} {supervisor}';
-  var MARCADORES = '{nombre} {contrato} {informe} {estado} {valor} {observacion} {supervisor} {secretaria} {orden} {egreso} {fecha} {app} {clave} {codigo} {evento} {asignados} {hasta} {tipo} {documento} {telefono} {detalle} {solicitud} {respuesta} {gestion} {donde}';
+  var MARCADORES = '{nombre} {contrato} {informe} {estado} {valor} {observacion} {supervisor} {secretaria} {orden} {egreso} {fecha} {app} {clave} {codigo} {evento} {asignados} {hasta} {tipo} {documento} {telefono} {detalle} {solicitud} {respuesta} {gestion} {donde} {acceso}';
 
   var MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   var APPS_MANT = ['CONTRATISTA', 'CONTRATACION', 'SUPERVISION', 'CONTABILIDAD', 'TESORERIA', 'COMUNICACIONES'];
