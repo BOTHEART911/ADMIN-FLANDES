@@ -18,6 +18,8 @@
                                documento o N° de contrato, la llave cambia y
                                sus cuentas la acompañan.
      · Los botones también salen en contratos INACTIVOS.
+     · 26/10 · En la LISTA: seleccionar varios (o todos los del filtro) y
+       activar o desactivar su WhatsApp en un solo guardado ('whatsappVarios').
 
    UN SOLO LLAMADO: la ficha ya trae todo ('contratistaDetalle' de ADMIN).
    Cada botón es una llamada y la respuesta trae la ficha nueva, la lista
@@ -610,6 +612,144 @@
       });
     });
   }
+
+
+  /* ══════════════ 26/10 · WHATSAPP DE VARIOS A LA VEZ ══════════════
+     En la lista: "Seleccionar varios" → casillas en las tarjetas, "todos
+     los del filtro" y Activar / Desactivar WhatsApp con confirmación de la
+     cantidad. UN guardado ('whatsappVarios'): el CORE cambia el canal de
+     cada persona en todas sus filas, en bloque, y lo deja en la bitácora.
+     La selección vive en la pantalla: filtrar o buscar no la borra. */
+
+  var SEL = { on: false, ids: {}, api: null, barra: null, filas: [], enCurso: false };
+
+  function selCuantos() { return Object.keys(SEL.ids).length; }
+
+  /** Personas distintas de lo marcado (el canal es de la persona, no del contrato). */
+  function selPersonas() {
+    var docs = {}, todas = window.CONTRATISTAS ? window.CONTRATISTAS.todas() : [];
+    todas.forEach(function (f) { if (SEL.ids[K.norm(f.id)]) docs[f.doc] = true; });
+    return Object.keys(docs).length;
+  }
+
+  function selModo(on) {
+    SEL.on = !!on;
+    if (!on) SEL.ids = {};
+    if (SEL.api) SEL.api.repintar();
+    selBarra();
+  }
+
+  function selBarra() {
+    var b = SEL.barra;
+    if (!b) return;
+    var n = selCuantos(), vis = SEL.filas.length;
+    var enVista = SEL.filas.filter(function (f) { return SEL.ids[K.norm(f.id)]; }).length;
+    b.classList.toggle('ad-sel--on', SEL.on);
+    b.querySelector('.ad-sel__abrir').hidden = SEL.on;
+    b.querySelector('.ad-sel__panel').hidden = !SEL.on;
+    b.querySelector('.ad-sel__n').innerHTML = '<b>' + K.numero(n) + '</b> ' + (n === 1 ? 'seleccionado' : 'seleccionados') +
+      (n && enVista < n ? ' <small>(' + K.numero(n - enVista) + ' fuera de este filtro)</small>' : '');
+    var todos = b.querySelector('.ad-sel__todos');
+    todos.textContent = enVista === vis && vis ? 'Quitar los ' + K.numero(vis) + ' del filtro' : 'Seleccionar los ' + K.numero(vis) + ' del filtro';
+    todos.disabled = !vis || SEL.enCurso;
+    b.querySelector('.ad-sel__limpiar').disabled = !n || SEL.enCurso;
+    b.querySelectorAll('.ad-sel__accion').forEach(function (x) { x.disabled = !n || SEL.enCurso; });
+  }
+
+  function selMarcar(f, si, t) {
+    var k = K.norm(f.id);
+    if (si) SEL.ids[k] = true; else delete SEL.ids[k];
+    if (t) {
+      t.classList.toggle('ad-sel-t--si', !!si);
+      var c = t.querySelector('.ad-sel-t__c'); if (c) c.checked = !!si;
+    }
+    selBarra();
+  }
+
+  function selAplicar(activar, boton) {
+    if (SEL.enCurso) return;
+    var ids = Object.keys(SEL.ids);
+    if (!ids.length) return;
+    /* ocupado desde el primer toque: nada de doble envío mientras se confirma */
+    SEL.enCurso = true; selBarra();
+    if (boton) boton.classList.add('kit-ocupado');
+    var personas = selPersonas();
+    var fin = function () { SEL.enCurso = false; if (boton) boton.classList.remove('kit-ocupado'); selBarra(); };
+    K.piezas.confirmar.abrir({
+      titulo: (activar ? 'Activar' : 'Desactivar') + ' WhatsApp a ' + K.numero(ids.length) + (ids.length === 1 ? ' contrato' : ' contratos'),
+      lista: [
+        ['Contratos seleccionados', K.numero(ids.length)],
+        ['Personas', K.numero(personas) + (personas < ids.length ? ' (el canal es de la persona: va a todos sus contratos)' : '')],
+        ['Qué pasa', activar ? 'Reciben los avisos individuales por WhatsApp; el correo se queda como esté.'
+                             : 'Dejan de recibir avisos por WhatsApp; el correo se queda como esté. El push no cambia.'],
+        ['Bitácora', 'Queda una línea con tu nombre y una novedad en la ficha de cada uno.']
+      ],
+      si: (activar ? 'Activar' : 'Desactivar') + ' a ' + K.numero(ids.length),
+      no: 'Volver'
+    }).then(function (ok) {
+      if (!ok) { fin(); return; }
+      pedir('whatsappVarios', { ids: ids, accion: activar ? 'ACTIVAR' : 'DESACTIVAR' }, {
+        titulo: (activar ? 'Activando' : 'Desactivando') + ' WhatsApp', sub: K.numero(ids.length) + (ids.length === 1 ? ' contrato' : ' contratos'),
+        pasos: ['Todas las filas de cada persona', 'Apuntando en la bitácora'],
+        listo: { titulo: 'WhatsApp al día', paso: activar ? 'Activado' : 'Desactivado' }
+      }).then(function (r) {
+        fin();
+        var t = r.cambiadas + (r.cambiadas === 1 ? ' persona cambió' : ' personas cambiaron');
+        if (r.yaEstaban) t += ', ' + r.yaEstaban + ' ya ' + (r.yaEstaban === 1 ? 'lo tenía' : 'lo tenían') + ' así';
+        if (r.noHallados && r.noHallados.length) t += '. ' + r.noHallados.length + ' contrato(s) ya no están en la hoja';
+        K.aviso(t + '.', r.noHallados && r.noHallados.length ? 'aviso' : 'ok', 7000);
+        selModo(false);
+      }, function (e) { fin(); mal(e); });
+    });
+  }
+
+  EXTRA.lista = function (api) {
+    SEL.api = api;
+    SEL.on = false; SEL.ids = {}; SEL.enCurso = false;
+    var b = K.nodo(
+      '<div class="ad-sel">' +
+      '  <button type="button" class="kit-btn kit-btn--plano ad-mini ad-sel__abrir">' + K.icono('check', 14) + ' Seleccionar varios</button>' +
+      '  <div class="ad-sel__panel" hidden>' +
+      '    <div class="ad-sel__fila"><p class="ad-sel__n" aria-live="polite"></p>' +
+      '      <button type="button" class="kit-btn kit-btn--plano ad-mini ad-sel__cerrar">' + K.icono('cerrar', 13) + ' Terminar</button></div>' +
+      '    <div class="ad-sel__fila">' +
+      '      <button type="button" class="kit-btn kit-btn--plano ad-mini ad-sel__todos"></button>' +
+      '      <button type="button" class="kit-btn kit-btn--plano ad-mini ad-sel__limpiar">Quitar la selección</button></div>' +
+      '    <div class="ad-sel__fila ad-sel__acc">' +
+      '      <button type="button" class="kit-btn kit-btn--marca ad-sel__accion" data-a="1">' + K.icono('whatsapp', 15) + ' Activar WhatsApp</button>' +
+      '      <button type="button" class="kit-btn kit-btn--plano kit-btn--malo ad-sel__accion" data-a="0">' + K.icono('silencio', 15) + ' Desactivar WhatsApp</button></div>' +
+      '  </div>' +
+      '</div>');
+    b.querySelector('.ad-sel__abrir').addEventListener('click', function () { K.vibrar(8); selModo(true); });
+    b.querySelector('.ad-sel__cerrar').addEventListener('click', function () { selModo(false); });
+    b.querySelector('.ad-sel__limpiar').addEventListener('click', function () { SEL.ids = {}; api.repintar(); selBarra(); });
+    b.querySelector('.ad-sel__todos').addEventListener('click', function () {
+      var vis = SEL.filas, todos = vis.every(function (f) { return SEL.ids[K.norm(f.id)]; });
+      vis.forEach(function (f) { if (todos) delete SEL.ids[K.norm(f.id)]; else SEL.ids[K.norm(f.id)] = true; });
+      api.repintar(); selBarra();
+    });
+    b.querySelectorAll('.ad-sel__accion').forEach(function (x) {
+      x.addEventListener('click', function () { K.vibrar(8); selAplicar(x.getAttribute('data-a') === '1', x); });
+    });
+    SEL.barra = b;
+    api.caja.insertBefore(b, api.antesDe);
+    selBarra();
+  };
+
+  EXTRA.alPintar = function (filas) { SEL.filas = filas || []; selBarra(); };
+
+  EXTRA.tarjeta = function (t, f) {
+    if (!SEL.on) return;
+    var si = !!SEL.ids[K.norm(f.id)];
+    var l = K.nodo('<label class="ad-sel-t"><input type="checkbox" class="ad-sel-t__c"><span>Seleccionar</span></label>');
+    var c = l.querySelector('input');
+    c.checked = si;
+    c.setAttribute('aria-label', 'Seleccionar a ' + nombre(f.nombre));
+    c.addEventListener('change', function () { selMarcar(f, c.checked, t); });
+    t.classList.add('ad-sel-t--modo');
+    if (si) t.classList.add('ad-sel-t--si');
+    t.insertBefore(l, t.firstChild);
+  };
 
   window.GESTION_EXTRA = EXTRA;
   window.CONTRATOS_ADMIN = {

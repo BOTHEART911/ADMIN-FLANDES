@@ -3675,3 +3675,19 @@ button.so-per:hover { border-color: var(--k-marca); background: rgba(var(--k-mar
   .pa-item { grid-template-columns: 30px 1fr auto; grid-template-areas: "n txt der"; }
   .pa-der { padding-left: 0; flex-wrap: nowrap; }
 }
+
+/* ══ 26/10 · WhatsApp de varios contratistas a la vez (lista de Contratistas) ══ */
+.ad-sel { margin: 4px 0 2px; }
+.ad-sel__panel { position: sticky; top: calc(var(--k-banner-alto, 0px) + 6px); z-index: 5; display: grid; gap: 8px;
+  padding: 10px 12px; border: 1px solid rgba(var(--k-marca-rgb), .35); border-radius: var(--k-r-lg);
+  background: var(--k-papel); box-shadow: var(--k-sombra-marca); }
+.ad-sel__fila { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ad-sel__n { flex: 1 1 auto; margin: 0; font: 400 .9rem/1.3 var(--k-fuente); color: var(--k-tinta); }
+.ad-sel__n small { color: var(--k-apagado); }
+.ad-sel__acc .kit-btn { flex: 1 1 200px; justify-content: center; }
+.ad-sel-t { display: inline-flex; align-items: center; gap: 8px; margin: -2px 0 8px; padding: 6px 10px; border-radius: var(--k-r-pill);
+  border: 1px solid var(--k-linea); font: 600 .8rem/1 var(--k-fuente); color: var(--k-apagado); cursor: pointer; user-select: none; }
+.ad-sel-t input { width: 18px; height: 18px; margin: 0; accent-color: var(--k-marca); cursor: pointer; }
+.ad-sel-t--si { outline: 2px solid var(--k-marca); outline-offset: -2px; }
+.ad-sel-t--si .ad-sel-t { border-color: var(--k-marca); color: var(--k-marca); background: rgba(var(--k-marca-rgb), .08); }
+@media (max-width: 560px) { .ad-sel__acc .kit-btn { flex: 1 1 100%; } }
