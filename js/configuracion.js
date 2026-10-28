@@ -147,7 +147,7 @@
     CUENTA_DEVUELTA_CONTRATACION: 'Cuenta devuelta por Contratación', GRUPO_DEVUELTA_CONTRATACION: 'Cuenta devuelta por Contratación · aviso al grupo del supervisor',
     CUENTA_EN_CONTABILIDAD: 'Cuenta en Contabilidad', ORDEN_PAGO: 'Orden de pago', EGRESO: 'Egreso', PAGO: 'Pago',
     CONTRATO_NUEVO: 'Contrato nuevo (único mensaje al crear el contratista · {acceso} = con qué contraseña entra)', CLAVE_RECUPERADA: 'Contraseña recuperada', USUARIO_ALTA: 'Alta de usuario',
-    CONTRATO_ADICION: 'Adición del contrato', CONTRATO_CESION: 'Cesión del contrato', CONTRATO_SUSPENSION: 'Suspensión del contrato',
+    CONTRATO_ADICION: 'Adición del contrato', CONTRATO_CESION: 'Cesión del contrato (único mensaje al cesionario · {acceso} = con qué contraseña entra)', CONTRATO_SUSPENSION: 'Suspensión del contrato',
     REQUERIMIENTO: 'Requerimiento de la oficina', CONTRATO_OTROSI: 'Otrosí del contrato', PLAN_POR_CORREGIR: 'Plan de pagos por corregir',
     SOLICITUD_COMUNICACIONES: 'Solicitud a Comunicaciones',
     /* 13/10 · botón NOTIFICAR del detalle: sale del WhatsApp del ADMIN/DEV, no del bot */
