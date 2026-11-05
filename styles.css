@@ -3631,6 +3631,58 @@ button.so-per:hover { border-color: var(--k-marca); background: rgba(var(--k-mar
 .as-probar__nada { color: var(--k-apagado); }
 .as-ok { color: var(--k-ok); } .as-duda { color: var(--k-aviso); } .as-malo { color: var(--k-malo); }
 
+/* 05/11 · contadores 👍/👎 que filtran y pestaña MARCAS (quién, app, pregunta y respuesta) */
+.as-res__b {
+  appearance: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  background: var(--k-papel); border: 1px solid var(--k-linea); border-radius: var(--k-r-pill);
+  padding: 6px 12px; font: 500 12.5px/1.2 var(--k-fuente); color: var(--k-tinta); min-height: 32px;
+}
+.as-res__b:hover, .as-res__b:focus-visible { border-color: rgba(var(--k-marca-rgb), .55); outline: none; }
+.as-res__b b { font-weight: 800; color: var(--k-marca); }
+.as-res__b.as-res--malo b, .as-res__b i { color: var(--k-malo); }
+.as-res__b i { font-style: normal; font-weight: 700; font-size: 11.5px; }
+:root[data-tema="oscuro"] .as-res__b b { color: var(--k-marca-clara); }
+:root[data-tema="oscuro"] .as-res__b.as-res--malo b { color: var(--k-malo); }
+.as-vfil { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.as-votos { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+@media (max-width: 420px) { .as-votos { grid-template-columns: 1fr; } }
+.as-voto { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-left: 4px solid var(--k-linea); min-width: 0; }
+.as-voto--no { border-left-color: var(--k-malo); }
+.as-voto--si { border-left-color: var(--k-ok); }
+.as-voto--hecha { opacity: .82; }
+.as-voto__cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.as-voto__ic { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: var(--k-malo-fondo); color: var(--k-malo); }
+.as-voto--si .as-voto__ic { background: var(--k-ok-fondo); color: var(--k-ok); }
+.as-voto__v { font: 700 14px/1.2 var(--k-fuente-titulo); }
+.as-voto__est { font: 600 10.5px/1 var(--k-fuente); font-style: normal; padding: 4px 8px; border-radius: var(--k-r-pill);
+  background: rgba(var(--k-marca-rgb), .1); color: var(--k-tinta); }
+.as-voto__est--pend { background: var(--k-malo-fondo); color: var(--k-malo); }
+.as-voto__f { margin-left: auto; font: 500 12px/1.2 var(--k-fuente); color: var(--k-apagado); font-variant-numeric: tabular-nums; }
+.as-voto__quien { margin: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font: 500 13.5px/1.35 var(--k-fuente); color: var(--k-tinta); }
+.as-voto__quien b { font-weight: 700; color: var(--k-tinta); }
+.as-voto__qt { min-width: 0; overflow-wrap: anywhere; }
+.as-voto__qt i { font-style: normal; color: var(--k-apagado); }
+.as-voto__quien { flex-wrap: nowrap !important; align-items: flex-start !important; }
+.as-voto__quien svg { flex: 0 0 auto; margin-top: 2px; }
+.as-voto__quien span { color: var(--k-apagado); overflow-wrap: anywhere; min-width: 0; }
+.as-voto__asig { margin: 8px 0 0; font: 600 12px/1.35 var(--k-fuente); color: var(--k-marca); }
+:root[data-tema="oscuro"] .as-voto__asig { color: var(--k-marca-clara); }
+.as-voto__quien--sin span { font-style: italic; }
+.as-voto__m { margin: 0; font: 500 12px/1.3 var(--k-fuente); color: var(--k-apagado); }
+.as-voto__q { margin: 0; font: 600 15px/1.4 var(--k-fuente); overflow-wrap: anywhere; }
+.as-voto__r { background: rgba(var(--k-marca-rgb), .06); border: 1px solid var(--k-linea); border-radius: var(--k-r-md); padding: 10px 12px; font: 400 13.5px/1.5 var(--k-fuente); }
+.as-voto__rt { margin: 0 0 6px; }
+.as-voto__rt span { color: var(--k-apagado); font-size: 12px; }
+.as-voto__rt i { font-style: normal; color: var(--k-apagado); font-size: 11.5px; }
+.as-voto__rx { max-height: 220px; overflow: auto; overflow-wrap: anywhere; }
+.as-voto__nota { display: block; margin-top: 6px; color: var(--k-apagado); font-size: 11.5px; }
+.as-voto__b { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.as-ctx { background: var(--k-malo-fondo); border-radius: var(--k-r-md); padding: 10px 12px; margin-bottom: 4px; }
+.as-ctx p { margin: 0 0 4px; font: 500 13px/1.4 var(--k-fuente); }
+.as-ctx__t { display: flex; align-items: center; gap: 6px; color: var(--k-malo); }
+.as-ctx__q { font-weight: 700 !important; color: var(--k-tinta); overflow-wrap: anywhere; }
+.as-ctx__h { color: var(--k-apagado); margin: 0 !important; }
+
 /* ============================================================
    26/10 · CONFIGURACIÓN → PLAN DE PAGOS (js/planpagos-admin.js)
    ============================================================ */
