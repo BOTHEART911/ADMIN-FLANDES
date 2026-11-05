@@ -163,12 +163,18 @@
     /* 27/09 · correos de alerta del bot (van a los 3 correos de ALERTA BOT DESCONECTADO) */
     BOT_DESCONECTADO: 'Bot desconectado · correo de alerta', BOT_RECONECTADO: 'Bot reconectado · correo de alerta',
     /* 27/10 · Supervisión, al aprobar: lo que sugirió el revisor para la próxima cuenta (firma el supervisor) */
-    RECOMENDACIONES_PROXIMA_CUENTA: 'Recomendaciones para tu próxima cuenta (Supervisión, al aprobar)'
+    RECOMENDACIONES_PROXIMA_CUENTA: 'Recomendaciones para tu próxima cuenta (Supervisión, al aprobar)',
+    /* 05/11 · Supervisión: el revisor (sin permiso de decidir) guarda su concepto → grupo del contrato */
+    GRUPO_VISTO_BUENO_REVISOR: 'Visto bueno del revisor · aviso al grupo del contrato',
+    GRUPO_CONCEPTO_REVISOR: 'Concepto del revisor (inconsistencia) · aviso al grupo del contrato'
   };
   /* Los avisos del bot son solo correo y tienen sus propios marcadores */
   function esAvisoBot(t) { return t === 'BOT_DESCONECTADO' || t === 'BOT_RECONECTADO'; }
   /* 01/10 · el texto que va al GRUPO de WhatsApp del supervisor: solo WhatsApp */
-  function esAvisoGrupo(t) { return t === 'GRUPO_DEVUELTA_CONTRATACION'; }
+  function esAvisoGrupo(t) { return t === 'GRUPO_DEVUELTA_CONTRATACION' || esAvisoRevisor(t); }
+  /* 05/11 · los del revisor de Supervisión al grupo del contrato */
+  function esAvisoRevisor(t) { return t === 'GRUPO_VISTO_BUENO_REVISOR' || t === 'GRUPO_CONCEPTO_REVISOR'; }
+  var MARCADORES_REVISOR = '{supervisor} {contratista} {informe} {contrato} {revisor} {secretaria} {fecha}';
   /* 13/10 · la copia de NOTIFICAR la abre el WhatsApp del dispositivo: solo texto, sin canales */
   function esAvisoNativo(t) { return t === 'COMUNICACIONES_COPIA'; }
   var MARCADORES_COPIA = '{nombre} {codigo} {evento} {entrega} {quien}';
@@ -1327,14 +1333,16 @@
     if (grupo) c = ['WHATSAPP'];
     var f = K.nodo('<div class="formulario ad-form"></div>');
     var rec = esAvisoRecordar(tipo);
-    f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(bot ? MARCADORES_BOT : (nativo ? MARCADORES_COPIA : (deCont ? MARCADORES_CONTRATACION : (rec ? MARCADORES_RECORDAR : MARCADORES)))) + '</code>. El que no venga en el aviso se borra solo. Un texto que dejes <b>vacío</b> sale con el texto por defecto.' +
+    f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(bot ? MARCADORES_BOT : (nativo ? MARCADORES_COPIA : (esAvisoRevisor(tipo) ? MARCADORES_REVISOR : (deCont ? MARCADORES_CONTRATACION : (rec ? MARCADORES_RECORDAR : MARCADORES))))) + '</code>. El que no venga en el aviso se borra solo. Un texto que dejes <b>vacío</b> sale con el texto por defecto.' +
       (rec ? ' Es un <b>recordatorio</b>: lo firma <b>{firma}</b> con <b>{cargo}</b> (en SUPERVISIÓN el supervisor del contrato; en ADMIN la oficina de la llave RECORDAR). <b>{plazo}</b> dice si la cuenta ya está vencida y cuántos días hábiles lleva, o cuántos le quedan' +
         (tipo === 'RECORDAR_ATRASO' ? '; <b>{cuentas}</b> trae una línea por cada cuenta atrasada con sus días.' : (tipo === 'RECORDAR_CORRECCION' ? '; <b>{pendiente}</b> trae el motivo o los soportes que faltan.' : '.')) : '') +
       (tipo === 'RECOMENDACIONES_PROXIMA_CUENTA' ? ' Sale cuando el supervisor <b>aprueba</b> y marca "Enviar al contratista": <b>{recomendaciones}</b> trae el texto (una por línea), <b>{informe}</b> la cuenta aprobada y <b>{siguiente}</b> la que va a empezar; lo firma <b>{supervisor}</b>. Queda también en su buzón y en la tarjeta del borrador.' : '') +
       (bot ? ' Este aviso sale <b>solo por correo</b> a los correos de la tarjeta <b>ALERTA DE BOT DESCONECTADO</b> (arriba).' : '') +
       (deCont ? ' Lo firma <b>{revisor}</b>: el usuario de Contratación que aprobó o devolvió. <b>{motivo}</b> pone cada motivo en su línea con “- ” y <b>{motivo_negrilla}</b> igual pero en negrilla.' : '') +
       (nativo ? ' Es el texto del botón <b>NOTIFICAR</b> del detalle de una solicitud EN PROCESO en COMUNICACIONES: se abre <b>tu WhatsApp</b> con el número del asignado y este texto listo para enviar (no sale por el bot). {quien} es quien notifica y {entrega} la fecha de entrega o publicación. Una línea que queda sin dato se quita sola.' :
-       (grupo ? ' Este texto sale <b>solo por WhatsApp</b> al grupo del supervisor del contrato cuando Contratación devuelve una cuenta.' : '')) + '</p>'));
+       (esAvisoRevisor(tipo) ? ' Este texto sale <b>solo por WhatsApp</b> al grupo del contrato cuando un <b>revisor de Supervisión</b> (el que no aprueba ni devuelve) guarda su ' +
+          (tipo === 'GRUPO_VISTO_BUENO_REVISOR' ? '<b>visto bueno</b>' : 'concepto <b>con inconsistencia</b>') + '. Lo firma <b>{revisor}</b>; sale una vez por concepto, después de guardar.' :
+       (grupo ? ' Este texto sale <b>solo por WhatsApp</b> al grupo del supervisor del contrato cuando Contratación devuelve una cuenta.' : ''))) + '</p>'));
     var can = K.nodo('<div class="cf-chips"></div>');
     ['PUSH', 'WHATSAPP', 'CORREO'].forEach(function (x) {
       var b = K.nodo('<button type="button" class="kit-pastilla" aria-pressed="' + (c.indexOf(x) >= 0) + '">' + K.icono(x === 'PUSH' ? 'campana' : (x === 'CORREO' ? 'sobre' : 'whatsapp'), 13) + ' ' + x + '</button>');
