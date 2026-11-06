@@ -606,6 +606,8 @@
             listo: { titulo: 'Datos al día', paso: 'Queda en la bitácora' }
           }).then(function (r) {
             if (r.idAnterior && r.idAnterior !== r.idContrato) K.aviso('La llave cambió a ' + r.idContrato + (r.cuentasMovidas ? ' y sus ' + r.cuentasMovidas + ' cuentas la acompañan' : '') + '.', 'ok', 7000);
+            /* 05/11 · Drive1105: el CORE pasa sus carpetas al correo nuevo en la cola del reloj */
+            else if ((r.cambios || []).some(function (x) { return x.k === 'CORREO'; })) K.aviso('En unos minutos las carpetas de sus cuentas en Drive quedan con el correo nuevo y el anterior deja de verlas.', 'ok', 7000);
             aLaFicha(r.idContrato);
           }, mal);
         });

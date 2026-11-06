@@ -101,6 +101,9 @@
               if (!falta.length) return 'No le falta nada: el contrato y sus datos están completos.';
               return 'Le falta: **' + falta.join(', ') + '**. Lo diligencia el contratista desde su app (DATOS DEL CONTRATO y DATOS PERSONALES).';
             } },
+          { texto: 'Si le cambio el correo, ¿qué pasa con su Drive?', responde: function () {
+              return 'En unos minutos las carpetas de las cuentas **de este contrato** que aún no han reportado el plan de pagos quedan compartidas con el **correo nuevo**, y el anterior deja de ver todas sus carpetas de cuenta. ' +
+                     'Si el correo nuevo no tiene cuenta de Google, a Contratación le llega la solicitud **CORREO SIN DRIVE**. Si tiene varios contratos, cámbialo en cada uno o que él lo cambie en DATOS PERSONALES (así cambia en todos).'; } },
           { texto: '¿Tiene otros contratos?', responde: function () {
               var d = CT() ? CT()._ficha() : null;
               if (!d || !d.datos) return 'La ficha todavía está cargando.';
