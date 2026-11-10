@@ -528,7 +528,13 @@
 
   var TITULOS = { inicio: 'Tu inicio', comunicados: 'Comunicados', mibot: 'Mi bot', tutoriales: 'Tutoriales en video', tablero: 'Tablero del ecosistema', rendimiento: 'Tablero de rendimiento', atrasos: 'Cuentas atrasadas', configuracion: 'Configuración', usuarios: 'Usuarios y roles', bitacora: 'Bitácora', recordatorios: 'Recordatorios', soportes: 'Soportes',
                   novedad: 'Novedades del contrato', datos: 'Todos los datos del contrato' };
+  /* 10/11 · CALIDAD DEL PRIMER FILTRO: la guía vive en js/calidad.js (mismo archivo en CONTRATACIÓN, ADMIN y SUPERVISIÓN) */
+  GUIAS.calidad = function () {
+    return window.CALIDAD && window.CALIDAD.ayuda ? window.CALIDAD.ayuda()
+      : { guia: 'Qué tan completas llegan a Contratación las cuentas que aprueba cada supervisor.', botones: [] };
+  };
   TITULOS.agenda = 'Agenda de revisión';
+  TITULOS.calidad = 'Calidad del primer filtro';
 
   /* 24/10 · entrega 8: ASISTENTE DE AYUDA (solo DEV) */
   GUIAS.asistente = function () {

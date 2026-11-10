@@ -66,6 +66,7 @@ var ARMAZON = [
   './js/masiva.js',
   './js/contratos-admin.js',
   './js/agenda.js',
+  './js/calidad.js',
   './js/ayuda-contratos.js',
   './plantillas/PLANTILLA_CARGA_MASIVA_CONTRATISTAS.xlsx',
   './img/icono-32.png',
@@ -104,7 +105,7 @@ var ARMAZON = [
   /* 5.3 · revisión de cuentas */
   './kit/carrusel.js', './kit/carrusel.css',
   /* 5.4 · reporte en PDF y Excel */
-  './kit/exportar.js', './kit/exportar.css', './kit/gerencial.js', './kit/informe-cuentas.js',
+  './kit/exportar.js', './kit/exportar.css', './kit/calidad.js', './kit/calidad.css', './kit/gerencial.js', './kit/informe-cuentas.js',
   /* 10.5 · compartir nativo */
   './kit/compartir.js',
   /* 24/10 · entrega 8: el asistente de ayuda (pieza del kit, Gemini, su base y su adaptador) */

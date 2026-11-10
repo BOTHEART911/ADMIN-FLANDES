@@ -337,6 +337,7 @@
     });
     /* 15/10 · AGENDA DE REVISIÓN de todo el ecosistema (mismo js/agenda.js de SUPERVISIÓN y CONTRATACIÓN) */
     if (window.AGENDA) window.AGENDA.configurar({ modo: 'ADMIN', app: app, errorCaja: errorCaja });
+    if (window.CALIDAD) window.CALIDAD.configurar({ app: app, errorCaja: errorCaja, nombreApp: 'Administración' });   /* 10/11 */
     /* 10.4 · la ficha del contratista avisa a SOPORTES y al inicio cuando rehace documentos */
     if (window.CONTRATOS_ADMIN && window.CONTRATOS_ADMIN.alSoporte) window.CONTRATOS_ADMIN.alSoporte(function (r) {
       if (r && r.resumen) C.soporte(r.resumen);
@@ -467,6 +468,7 @@
     /* 10.5 · cuentas atrasadas */
     atrasos: function () { window.ATRASOS.vista(); },
     agenda: function () { window.AGENDA.vista(); },   /* 15/10 */
+    calidad: function () { window.CALIDAD.vista(); },   /* 10/11 · calidad del primer filtro */
     /* 10.6 · comunicados, mi bot y tableros */
     comunicados: function () { window.COMUNICADOS.vista(); },
     mibot: function () { window.MIBOT.vista(); },
@@ -500,6 +502,7 @@
     soportes: 'SOPORTES',
     atrasos: 'CUENTAS ATRASADAS',
     agenda: 'AGENDA DE REVISIÓN',
+    calidad: 'CALIDAD DEL PRIMER FILTRO',
     comunicados: 'COMUNICADOS',
     mibot: 'MI BOT',
     tablero: 'TABLERO DEL ECOSISTEMA',
@@ -519,7 +522,7 @@
     datos: 'TODOS LOS DATOS'
   };
 
-  var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora', recordatorios: 'configuracion', soportes: 'soportes', atrasos: 'configuracion', agenda: 'configuracion',
+  var PERMISO = { configuracion: 'configuracion', usuarios: 'usuarios', bitacora: 'bitacora', recordatorios: 'configuracion', soportes: 'soportes', atrasos: 'configuracion', agenda: 'configuracion', calidad: 'calidadSupervision',
     comunicados: 'comunicados', mibot: 'miBot', tablero: 'dashboard', rendimiento: 'dashboard', tutoriales: 'tutoriales',
     asistente: 'asistenteDev',   /* 24/10 · ningún rol tiene esta vista: solo DEV entra */
     contratistas: 'contratistas', contratista: 'contratistas', informe: 'contratistas', agregar: 'agregarContratista', masiva: 'agregarContratista',
@@ -635,6 +638,9 @@
     /* 15/10 · qué días llega cuánto trabajo y de quiénes */
     if (puede('configuracion')) tC.push(accesoIcono('AGENDA DE REVISIÓN', 'Qué días llegan las cuentas y de quiénes, por supervisión y secretaría', 'calendario',
       function () { irA('agenda'); }));
+    /* 10/11 · calidad del primer filtro: ranking de supervisores e informe (igual que en CONTRATACIÓN) */
+    if (puede('calidadSupervision')) tC.push(accesoIcono('CALIDAD DEL PRIMER FILTRO', 'Qué tan completas llegan a Contratación las cuentas que aprueba cada supervisor: ranking e informe', 'grafica',
+      function () { irA('calidad'); }));
     if (tC.length) bloque('CONTRATISTAS', tC);
 
     var tA = [];
