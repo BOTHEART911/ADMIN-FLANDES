@@ -28,7 +28,7 @@
   var O = window.OFICINA;
   var C = {};
   var D = null, HORA = null, CARGANDO = null;
-  var F = { pestana: 'temas', app: 'CONTRATISTA', busca: '', voto: 'NO', vEstado: 'PEND', vBusca: '' };
+  var F = { pestana: 'temas', app: 'CONTRATISTA', busca: '', voto: 'NO', vEstado: 'PEND', vBusca: '', rEstado: 'PENDIENTE', rQue: '', rBusca: '' };
   var PRUEBA = { vista: 'inicio', estado: 'ACTIVO', frase: '' };
 
   var NOMBRES = { CONTRATISTA: 'Contratista', CONTRATACION: 'Contratación', SUPERVISION: 'Supervisión', CONTABILIDAD: 'Contabilidad',
@@ -145,7 +145,7 @@
     var pP = K.piezas.pastillas.montar(zP, {
       valor: F.pestana,
       opciones: [{ valor: 'temas', texto: 'Temas' }, { valor: 'ensenar', texto: 'Por enseñar', tono: 'aviso' },
-        { valor: 'votos', texto: 'Marcas 👍/👎', tono: 'aviso' }, { valor: 'probar', texto: 'Probar' }],
+        { valor: 'votos', texto: 'Marcas 👍/👎', tono: 'aviso' }, { valor: 'redactemos', texto: 'Redactemos', tono: 'aviso' }, { valor: 'probar', texto: 'Probar' }],
       alCambiar: function (v) { F.pestana = v || 'temas'; pintar(); }
     });
 
@@ -164,7 +164,7 @@
       /* la app elegida aún no tiene sus temas en memoria: se traen (una vez) y se repinta */
       var faltan = F.pestana === 'votos'
         ? (D.votos || []).filter(pendiente).map(function (v) { return v.app; })
-        : [F.app];
+        : (F.pestana === 'redactemos' ? [] : [F.app]);
       if (faltan.some(function (a) { return !CARGADAS[a]; })) {
         cuerpo.innerHTML = '';
         K.piezas.esqueletos.mientras(cuerpo, asegurar(faltan), { forma: 'tarjetas', cuantos: 3, espera: 'Trayendo los temas de ' + (F.pestana === 'votos' ? 'esas apps' : (NOMBRES[F.app] || F.app)) })
@@ -184,12 +184,13 @@
         (D.activas && D.activas.indexOf(F.app) < 0 ? '<span class="as-res--aviso">Esta app todavía no tiene el asistente en su pantalla</span>' : '') +
         (HORA ? '<span class="ct-sello">' + K.icono('reloj', 13) + ' Al día a las ' + K.esc(O.horaCorta(HORA)) + '</span>' : '');
       if (pP && pP.conteos) pP.conteos({ ensenar: (D.porEnsenar || []).filter(function (p) { return p.app === F.app; }).length, temas: temasDe(F.app).length,
-        votos: (D.votos || []).filter(pendiente).length });
+        votos: (D.votos || []).filter(pendiente).length, redactemos: RD ? RD.pendientes : undefined });
       O.marcar(zP, F.pestana);
       /* las marcas son de todas las apps (cada tarjeta dice la suya) */
-      zA.hidden = F.pestana === 'votos';
+      zA.hidden = F.pestana === 'votos' || F.pestana === 'redactemos';
       cuerpo.innerHTML = '';
       if (F.pestana === 'votos') pintarVotos(cuerpo);
+      else if (F.pestana === 'redactemos') pintarRedactemos(cuerpo);
       else if (F.pestana === 'ensenar') pintarEnsenar(cuerpo);
       else if (F.pestana === 'probar') pintarProbar(cuerpo);
       else pintarTemas(cuerpo);
@@ -560,6 +561,140 @@
       boton('Ver el tema', 'lapiz', 'kit-btn--plano', function () { F.app = v.app; editar(tema); });
     }
     return c;
+  }
+
+  /* ══════════ 10/11 · REDACTEMOS JUNTOS: lo que aprende el asistente de redacción ══════════
+     Del diálogo «Redactemos una actividad juntos» (CONTRATISTA) llegan, sin cifras ni nombres:
+     las unidades que cuentan, para quién lo hacen, qué evidencias nombran y lo que no entendió,
+     por tipo de obligación. APROBAR lo vuelve opción (botón) para los contratistas de ese tipo de
+     obligación; nunca se usa para redactar por ellos. Lo no entendido se marca REVISADO.
+     Un viaje al abrir la pestaña (redaccionDatos, cache del CORE) y uno por marca (redaccionMarcar). */
+  var RD = null, RD_TRAYENDO = null;
+  var RD_QUE = { 'PARA QUIEN': 'Para quién', 'EVIDENCIA': 'Evidencia', 'UNIDAD': 'Lo que cuentan' };
+  var RD_EST = { PENDIENTE: 'Por revisar', APROBADO: 'Aprobado', DESCARTADO: 'Descartado', REVISADO: 'Revisado' };
+  function rdTraer(forzar) {
+    if (RD && !forzar) return Promise.resolve(RD);
+    if (RD_TRAYENDO && !forzar) return RD_TRAYENDO;
+    RD_TRAYENDO = K.pedir('redaccionDatos', {}, { fondo: true }).then(function (d) { RD = d || { items: [], uso: {} }; RD_TRAYENDO = null; return RD; },
+      function (e) { RD_TRAYENDO = null; throw e; });
+    return RD_TRAYENDO;
+  }
+  function rdTipo(q) { return /^NO ENTENDIO/.test(q) ? 'NO' : q; }
+  function rdQueTexto(q) { return /^NO ENTENDIO/.test(q) ? 'No entendió · ' + q.replace(/^NO ENTENDIO\s*·\s*/, '').toLowerCase() : (RD_QUE[q] || q); }
+  function pintarRedactemos(z) {
+    if (!RD) {
+      K.piezas.esqueletos.mientras(z, rdTraer(false), { forma: 'tarjetas', cuantos: 3, espera: 'Trayendo lo que aprendió el asistente de redacción' })
+        .then(function () { repintar(); })['catch'](function (e) { z.appendChild(C.errorCaja(e, function () { RD = null; repintar(); })); });
+      return;
+    }
+    var u = RD.uso || {};
+    z.appendChild(K.nodo('<p class="as-rd__intro">' + K.icono('robot', 16) + ' <span>Lo que dicen los contratistas en <b>Redactemos una actividad juntos</b>, sin cifras ni nombres. <b>Aprobar</b> lo vuelve botón para quienes tienen ese tipo de obligación; nunca redacta por ellos.</span></p>'));
+    z.appendChild(K.nodo('<div class="as-res as-rd__uso">' +
+      '<span><b>' + K.numero(u.total || 0) + '</b> actividades redactadas</span>' +
+      '<span><b>' + K.numero(u.contratos || 0) + '</b> contratos</span>' +
+      '<span><b>' + K.numero(u.ultimos30 || 0) + '</b> en 30 días</span>' +
+      '<span><b>' + K.numero(u.gemini || 0) + '</b> con Gemini · <b>' + K.numero(u.local || 0) + '</b> en el teléfono</span>' +
+      '<span><b>' + K.numero(u.noRealizada || 0) + '</b> «no la realicé»</span></div>'));
+    var fil = K.nodo('<div class="as-vfil"><div class="as-vfil__a"></div><div class="as-vfil__b"></div></div>');
+    z.appendChild(fil);
+    function pasa(x, est, que) {
+      if (est && x.estado !== est) return false;
+      if (que && rdTipo(x.que) !== que) return false;
+      return true;
+    }
+    var pE = K.piezas.pastillas.montar(fil.querySelector('.as-vfil__a'), {
+      etiqueta: 'Estado', valor: F.rEstado,
+      opciones: [{ valor: 'PENDIENTE', texto: 'Por revisar', tono: 'aviso' }, { valor: 'APROBADO', texto: 'Aprobados' }, { valor: 'REVISADO', texto: 'Revisados' }, { valor: 'DESCARTADO', texto: 'Descartados' }, { valor: '', texto: 'Todos' }],
+      alCambiar: function (v) { F.rEstado = v; lista(); }
+    });
+    var pQ = K.piezas.pastillas.montar(fil.querySelector('.as-vfil__b'), {
+      etiqueta: 'Qué', valor: F.rQue,
+      opciones: [{ valor: '', texto: 'Todo' }, { valor: 'PARA QUIEN', texto: 'Para quién' }, { valor: 'EVIDENCIA', texto: 'Evidencia' }, { valor: 'UNIDAD', texto: 'Lo que cuentan' }, { valor: 'NO', texto: 'No entendió', tono: 'aviso' }],
+      alCambiar: function (v) { F.rQue = v; lista(); }
+    });
+    var b = O.barra({ placeholder: 'Tipo de obligación o frase', valor: F.rBusca,
+      alBuscar: function (q) { F.rBusca = q; lista(); },
+      alRefrescar: function () { return rdTraer(true).then(repintar); } });
+    z.appendChild(b.caja);
+    var conteo = K.nodo('<p class="ct-conteo"></p>');
+    z.appendChild(conteo);
+    var rej = K.nodo('<div class="as-rd"></div>');
+    z.appendChild(rej);
+    function lista() {
+      var I = RD.items || [], q = F.rBusca;
+      var L = I.filter(function (x) {
+        if (!pasa(x, F.rEstado, F.rQue)) return false;
+        if (!q) return true;
+        if (!x._t) x._t = K.norm([x.tema, x.que, x.muestra].join(' '));
+        return coincide(x._t, q);
+      });
+      var cE = {}; ['PENDIENTE', 'APROBADO', 'REVISADO', 'DESCARTADO', ''].forEach(function (e) { cE[e] = I.filter(function (x) { return pasa(x, e, F.rQue); }).length; });
+      var cQ = {}; ['', 'PARA QUIEN', 'EVIDENCIA', 'UNIDAD', 'NO'].forEach(function (k) { cQ[k] = I.filter(function (x) { return pasa(x, F.rEstado, k); }).length; });
+      pE.conteos(cE); pQ.conteos(cQ);
+      conteo.innerHTML = '<b>' + K.numero(L.length) + '</b> ' + (L.length === 1 ? 'frase' : 'frases');
+      rej.innerHTML = '';
+      if (!L.length) {
+        rej.appendChild(O.vacio(I.length ? 'No hay frases con este filtro.' : 'Todavía nadie ha redactado con el asistente.', function () {
+          F.rEstado = ''; F.rQue = ''; F.rBusca = ''; b.inp.value = ''; pE.poner(''); pQ.poner('');
+        }));
+        return;
+      }
+      /* agrupadas por tipo de obligación (lo que se cuenta en ella) */
+      var grupos = {}, orden = [];
+      L.forEach(function (x) { var t = x.tema || 'sin tipo'; if (!grupos[t]) { grupos[t] = []; orden.push(t); } grupos[t].push(x); });
+      orden.forEach(function (t) {
+        var g = K.nodo('<section class="kit-tarjeta as-rd__g"><header class="as-rd__gt"></header><ul class="as-rd__l" role="list"></ul></section>');
+        g.querySelector('.as-rd__gt').innerHTML = K.icono('documento', 15) + ' <span></span>';
+        g.querySelector('.as-rd__gt span').textContent = 'Obligaciones de: ' + t.split('|').join(', ');
+        var ul = g.querySelector('.as-rd__l');
+        grupos[t].forEach(function (x) { ul.appendChild(filaRd(x, lista)); });
+        rej.appendChild(g);
+      });
+    }
+    lista();
+  }
+  function filaRd(x, alCambiar) {
+    var no = rdTipo(x.que) === 'NO';
+    var li = K.nodo('<li class="as-rd__i as-rd__i--' + x.estado.toLowerCase() + '">' +
+      '<div class="as-rd__t"><span class="as-rd__que"></span><b class="as-rd__m"></b><small class="as-rd__meta"></small></div>' +
+      '<div class="as-rd__b"></div></li>');
+    li.querySelector('.as-rd__que').textContent = rdQueTexto(x.que);
+    li.querySelector('.as-rd__m').textContent = '«' + x.muestra + '»';
+    li.querySelector('.as-rd__meta').textContent = x.veces + (x.veces === 1 ? ' vez' : ' veces') + ' · ' + fechaBonita(x.ultima) +
+      (x.estado !== 'PENDIENTE' ? ' · ' + (RD_EST[x.estado] || x.estado) + (x.fechaRev ? ' el ' + fechaBonita(x.fechaRev) : '') : '');
+    var bb = li.querySelector('.as-rd__b');
+    function boton(txt, ic, cls, estado) {
+      var bt = K.nodo('<button type="button" class="kit-btn ' + cls + '">' + K.icono(ic, 15) + ' <span></span></button>');
+      bt.querySelector('span').textContent = txt;
+      bt.addEventListener('click', function () {
+        if (bt.disabled) return;
+        K.vibrar(6);
+        [].forEach.call(bb.querySelectorAll('button'), function (y) { y.disabled = true; });
+        bt.setAttribute('aria-busy', 'true');
+        K.pedir('redaccionMarcar', { ids: [x.id], estado: estado, rid: 'RD' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }, { ms: 30000 }).then(function () {
+          /* se parcha la fila en memoria: no se recarga todo */
+          var antes = x.estado;
+          x.estado = estado; x.fechaRev = ahoraLocal();
+          if (antes === 'PENDIENTE' && estado !== 'PENDIENTE') RD.pendientes = Math.max(0, (RD.pendientes || 0) - 1);
+          if (antes !== 'PENDIENTE' && estado === 'PENDIENTE') RD.pendientes = (RD.pendientes || 0) + 1;
+          K.aviso(estado === 'APROBADO' ? 'Aprobado: ya sale como opción para ese tipo de obligación.' : (estado === 'PENDIENTE' ? 'Volvió a por revisar.' : 'Listo.'), 'ok', 3500);
+          alCambiar();
+        }, function (e) {
+          [].forEach.call(bb.querySelectorAll('button'), function (y) { y.disabled = false; });
+          bt.removeAttribute('aria-busy');
+          K.aviso((e && e.message) || 'No se pudo guardar. Intenta de nuevo.', 'malo', 5000);
+        });
+      });
+      bb.appendChild(bt);
+    }
+    if (x.estado === 'PENDIENTE') {
+      if (no) boton('Revisado', 'check', 'kit-btn--marca', 'REVISADO');
+      else boton('Aprobar', 'check', 'kit-btn--marca', 'APROBADO');
+      boton('Descartar', 'cerrar', 'kit-btn--plano kit-btn--malo', 'DESCARTADO');
+    } else {
+      boton('Volver a por revisar', 'recargar', 'kit-btn--plano', 'PENDIENTE');
+    }
+    return li;
   }
 
   /* ── probar ── */
