@@ -51,12 +51,16 @@
 
   /* ══════════════ cifras (en el teléfono: la lista ya está aquí) ══════════════ */
 
+  /* 18/11 · «Por calificar» = RESUELTO SIN estrellas (como lo cuenta el CORE). Un RESUELTO que ya
+     tiene estrellas no está por calificar: la pastilla y el filtro lo contaban (decía 14, eran 4). */
+  function porCalificar(x) { return x.estado === 'RESUELTO' && !x.estrellas; }
+
   function cifras(l) {
     var c = { total: l.length, PENDIENTE: 0, 'EN PROCESO': 0, RESUELTO: 0, REABIERTO: 0, CERRADO: 0, calificados: 0, suma: 0, sinCalificar: 0 };
     l.forEach(function (x) {
       c[x.estado] = (c[x.estado] || 0) + 1;
       if (x.estrellas) { c.calificados++; c.suma += x.estrellas; }
-      if (x.estado === 'RESUELTO' && !x.estrellas) c.sinCalificar++;
+      if (porCalificar(x)) c.sinCalificar++;
     });
     c.promedio = c.calificados ? Math.round(c.suma / c.calificados * 10) / 10 : 0;
     return c;
@@ -71,6 +75,7 @@
     return lista().filter(function (x) {
       if (F.estado === 'REALIZADOS') { if (x.estado !== 'RESUELTO' && x.estado !== 'CERRADO') return false; }
       else if (F.estado === 'ABIERTOS') { if (x.estado !== 'PENDIENTE' && x.estado !== 'EN PROCESO' && x.estado !== 'REABIERTO') return false; }
+      else if (F.estado === 'RESUELTO') { if (!porCalificar(x)) return false; }
       else if (F.estado && x.estado !== F.estado) return false;
       if (F.app && x.app !== F.app) return false;
       var d = iso(x.fecha);
@@ -197,6 +202,7 @@
     var mE = { '': 0, ABIERTOS: 0, REALIZADOS: 0 }, mA = { '': 0 };
     lista().forEach(function (x) {
       mE['']++; mE[x.estado] = (mE[x.estado] || 0) + 1;
+      if (x.estado === 'RESUELTO' && x.estrellas) mE.RESUELTO--;   /* la pastilla «Por calificar» cuenta solo los sin estrellas */
       if (x.estado === 'PENDIENTE' || x.estado === 'EN PROCESO' || x.estado === 'REABIERTO') mE.ABIERTOS++;
       if (x.estado === 'RESUELTO' || x.estado === 'CERRADO') mE.REALIZADOS++;
       mA['']++; mA[x.app] = (mA[x.app] || 0) + 1;
@@ -223,12 +229,15 @@
     t.querySelector('.ad-bf__t b').textContent = nombre(x.emisor || 'Sin nombre');
     t.querySelector('.ad-bf__t small').textContent = [APP_T[x.app] || x.app, x.rol && x.rol !== x.app ? x.rol : '', x.idContrato || x.documento].filter(Boolean).join(' · ');
     var est = t.querySelector('.so-est');
-    est.textContent = x.estado === 'RESUELTO' ? 'RESUELTO · por calificar' : x.estado;
+    est.textContent = x.estado === 'RESUELTO' ? (porCalificar(x) ? 'RESUELTO · por calificar' : 'RESUELTO · calificado') : x.estado;
     est.classList.add('so-est--' + (TONO[x.estado] || 'nada'));
     var dias = diasDesde(x.fecha);
     var meta = [x.id, x.fecha ? (O().cuando(iso(x.fecha)) || x.fecha.slice(0, 10)) + ' ' + String(x.fecha).slice(11, 16) : 'sin fecha (app anterior)',
                 x.tipo && x.tipo !== 'SOLICITUD' ? x.tipo.toLowerCase() : '', x.vista ? 'vista: ' + x.vista : ''];
     t.querySelector('.so-c__meta').textContent = meta.filter(Boolean).join(' · ');
+    /* 18/11 · la persona la editó mientras esperaba respuesta (Soporte1118.gs) */
+    var nEd = (x.historial || []).filter(function (h) { return h.evento === 'EDITADO'; }).length;
+    if (nEd) t.querySelector('.so-c__meta').appendChild(K.nodo('<em class="so-re">' + K.icono('lapiz', 12) + ' editada ' + nEd + (nEd === 1 ? ' vez' : ' veces') + '</em>'));
     if (x.reabierto) t.querySelector('.so-c__meta').appendChild(K.nodo('<em class="so-re">' + K.icono('recargar', 12) + ' reabierto ' + x.reabierto + (x.reabierto === 1 ? ' vez' : ' veces') + '</em>'));
     if ((x.estado === 'PENDIENTE' || x.estado === 'REABIERTO') && dias >= 2) t.querySelector('.so-c__meta').appendChild(K.nodo('<em class="so-dias">' + dias + ' días esperando</em>'));
     t.querySelector('.so-c__sol').innerHTML = O().conEnlaces(x.solicitud);
