@@ -661,7 +661,7 @@
     if (puede('comunicados')) tT.push(acc.comunicados = acceso('COMUNICADOS', 'Publica a las apps que escojas, con documentos y aviso a sus teléfonos', 'img/chat.webp',
       function () { irA('comunicados'); }));
     /* ajuste 4 · el interruptor y los videos de TUTORIALES DE USO del contratista */
-    if (puede('tutoriales')) tT.push(acc.tutoriales = accesoIcono('TUTORIALES EN VIDEO', 'Enciende o apaga los tutoriales del contratista; el video de Drive y la portada de cada uno', 'play',
+    if (puede('tutoriales')) tT.push(acc.tutoriales = accesoIcono('TUTORIALES EN VIDEO', 'Los videos de YouTube del contratista: orden, imagen del Short, palabras del asistente y comentarios', 'play',
       function () { irA('tutoriales'); }));
     /* 24/10 · ASISTENTE DE AYUDA: lo que responde el robot de las apps (solo DEV) */
     if (K.norm((YO && YO.rol) || '') === 'DEV') tT.push(acc.asistente = accesoIcono('ASISTENTE DE AYUDA', 'Lo que responde el robot de las apps: temas, preguntas por enseñar y probar una frase', 'robot',

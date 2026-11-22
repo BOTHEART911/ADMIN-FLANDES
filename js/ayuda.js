@@ -496,20 +496,23 @@
   function TU() { return window.TUTORIALES ? window.TUTORIALES._datos() : null; }
   GUIAS.tutoriales = function () {
     var d = TU();
-    var t = hola() + 'aquí manejas los videos de **TUTORIALES DE USO** de la app del contratista. ';
+    var t = hola() + 'aquí manejas los tutoriales de YouTube de **TUTORIALES DE USO** de la app del contratista: el Short lo ve el celular y el video el PC. ';
     if (d) {
-      t += 'La vista está **' + (d.activo ? 'ENCENDIDA' : 'APAGADA') + '** y hay **' + (d.activos || 0) + '** de ' + (d.videos || []).length + ' tutoriales activos. ';
-      if (d.enCloudinary) t += 'Ojo: **' + d.enCloudinary + '** portadas siguen en Cloudinary. ';
+      t += 'La vista está **' + (d.activo ? 'ENCENDIDA' : 'APAGADA') + '**, hay **' + (d.activos || 0) + '** de ' + (d.videos || []).length + ' tutoriales publicados';
+      t += d.sinResponder ? ' y **' + d.sinResponder + '** comentarios sin responder. ' : '. ';
     }
-    t += 'Para cambiar un video: súbelo a la carpeta TUTORIALES EN VIDEO, toca **Editar** y pega su enlace.';
+    t += 'En **Comentarios** respondes como DEV o eliminas.';
     return {
       guia: t,
       botones: [
-        { texto: '¿Cómo cambio un video?', responde: function () {
-            return '1. Toca **Ir a carpeta** y sube el video nuevo a Drive.\n2. En el tutorial toca **Editar** y pega el enlace del video.\n3. Si quieres, sube una **portada** (imagen 16:9).\n4. **Guardar**: el CORE comprueba que sea un video, lo comparte con enlace y toma la duración. Los me gusta y comentarios se conservan.';
+        { texto: '¿Cómo agrego un tutorial?', responde: function () {
+            return '1. Sube el video y el Short a YouTube (no listados).\n2. Toca **Agregar tutorial** y pega los dos enlaces.\n3. Escribe la duración (m:ss) y, si quieres, sube la **imagen del Short** (vertical): YouTube no la entrega.\n4. Pon las **palabras** con las que el asistente debe ofrecerlo.\n5. **Guardar**. La miniatura horizontal la toma la app de YouTube.';
+          } },
+        { texto: '¿Cómo responde el asistente con un video?', responde: function () {
+            return 'Cuando la pregunta del contratista trae una de las **palabras** del tutorial, después de la respuesta le pregunta **¿Quieres ver el video?**. Con **Sí** lo lleva al video dentro de TUTORIALES. Cada video se ofrece una vez por sesión.';
           } },
         { texto: '¿Qué ve el contratista si apago?', responde: function () {
-            return 'No ve la tarjeta **TUTORIALES DE USO** en su inicio y, si tenía el enlace guardado, el servidor no le entrega los videos. No se borra nada: al encender vuelve todo como estaba.';
+            return 'No ve **TUTORIALES DE USO** en su inicio, el asistente no ofrece videos y, si tenía el enlace guardado, el servidor no le entrega nada. No se borra nada: al encender vuelve todo como estaba.';
           } },
         { texto: '¿Cuáles tienen más vistas?', responde: function () {
             var l = ((TU() || {}).videos || []).slice().sort(function (a, b) { return (b.vistas || 0) - (a.vistas || 0); }).slice(0, 5);
