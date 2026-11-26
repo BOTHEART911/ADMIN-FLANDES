@@ -181,6 +181,8 @@
   /* 01/10 · los avisos de la decisión de Contratación: firma el revisor */
   var AVISOS_CONTRATACION = ['CUENTA_APROBADA', 'CUENTA_DEVUELTA_CONTRATACION', 'GRUPO_DEVUELTA_CONTRATACION'];
   var MARCADORES_CONTRATACION = '{revisor} {contratista} {nombre} {contrato} {informe} {total} {cuenta} {motivo} {motivo_negrilla} {observacion} {supervisor} {fecha}';
+  /* 26/11 · plan de pagos aceptado (Supervisión): {actaFinal} = título + nombre del PDF del acta, SOLO en la última cuenta */
+  var MARCADORES_CIERRE = '{nombre} {contrato} {informe} {supervisor} {pieSupervisor} {actaFinal} {actaArchivo} {informeUrl} {actaUrl} {acta} {fecha}';
   var MARCADORES_BOT = '{estado} {fecha} {desde} {duracion} {detalle} {enlace} {proyecto}';
   /* 21/10 · {plazo}: "lleva N días hábiles de vencida…" o "le quedan N días hábiles…"; {firma} y {cargo}: quien envía */
   function esAvisoRecordar(t) { return /^RECORDAR_/.test(t); }
@@ -1333,7 +1335,8 @@
     if (grupo) c = ['WHATSAPP'];
     var f = K.nodo('<div class="formulario ad-form"></div>');
     var rec = esAvisoRecordar(tipo);
-    f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(bot ? MARCADORES_BOT : (nativo ? MARCADORES_COPIA : (esAvisoRevisor(tipo) ? MARCADORES_REVISOR : (deCont ? MARCADORES_CONTRATACION : (rec ? MARCADORES_RECORDAR : MARCADORES))))) + '</code>. El que no venga en el aviso se borra solo. Un texto que dejes <b>vacío</b> sale con el texto por defecto.' +
+    f.appendChild(K.nodo('<p class="formulario__nota">Marcadores: <code>' + K.esc(bot ? MARCADORES_BOT : (nativo ? MARCADORES_COPIA : (esAvisoRevisor(tipo) ? MARCADORES_REVISOR : (deCont ? MARCADORES_CONTRATACION : (rec ? MARCADORES_RECORDAR : (tipo === 'CUENTA_EN_CONTABILIDAD' ? MARCADORES_CIERRE : MARCADORES)))))) + '</code>. El que no venga en el aviso se borra solo. Un texto que dejes <b>vacío</b> sale con el texto por defecto.' +
+      (tipo === 'CUENTA_EN_CONTABILIDAD' ? ' <b>{actaFinal}</b> pone, solo en la <b>última cuenta</b> del contrato, el renglón <b>Acta final de cumplimiento</b> con el nombre del PDF (ACT_C…); en las demás cuentas queda vacío. Déjalo pegado al nombre del informe de supervisión.' : '') +
       (rec ? ' Es un <b>recordatorio</b>: lo firma <b>{firma}</b> con <b>{cargo}</b> (en SUPERVISIÓN el supervisor del contrato; en ADMIN la oficina de la llave RECORDAR). <b>{plazo}</b> dice si la cuenta ya está vencida y cuántos días hábiles lleva, o cuántos le quedan' +
         (tipo === 'RECORDAR_ATRASO' ? '; <b>{cuentas}</b> trae una línea por cada cuenta atrasada con sus días.' : (tipo === 'RECORDAR_CORRECCION' ? '; <b>{pendiente}</b> trae el motivo o los soportes que faltan.' : '.')) : '') +
       (tipo === 'RECOMENDACIONES_PROXIMA_CUENTA' ? ' Sale cuando el supervisor <b>aprueba</b> y marca "Enviar al contratista": <b>{recomendaciones}</b> trae el texto (una por línea), <b>{informe}</b> la cuenta aprobada y <b>{siguiente}</b> la que va a empezar; lo firma <b>{supervisor}</b>. Queda también en su buzón y en la tarjeta del borrador.' : '') +
