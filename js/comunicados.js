@@ -294,7 +294,10 @@
           K.ocupado = false;
           m.cerrar();
           var fallo = [r && r.aviso && r.aviso.error, r && r.avisoOficinas && r.avisoOficinas.error].filter(Boolean);
-          if (avisar && fallo.length) K.aviso('Quedó publicado, pero la notificación no salió: ' + fallo.join(' · '), 'aviso', 9000);
+          /* 26/11 · cuenta a cuántos teléfonos salió; los que ya no existen se dan de baja solos y no son error */
+          var env = ((r && r.aviso && r.aviso.enviados) || 0) + ((r && r.avisoOficinas && r.avisoOficinas.enviados) || 0);
+          if (avisar && fallo.length && !env) K.aviso('Quedó publicado, pero la notificación no salió: ' + fallo.join(' · '), 'aviso', 9000);
+          else if (avisar && env) K.aviso('Notificación enviada a ' + K.numero(env) + (env === 1 ? ' teléfono.' : ' teléfonos.') + (fallo.length ? ' Algunos no la recibieron: ' + fallo.join(' · ') : ''), fallo.length ? 'aviso' : 'ok', fallo.length ? 9000 : 5000);
           F.estado = 'PUBLICADO'; guardarFiltro();
           return cargar(true).then(function () { if (vista._repintar) vista._repintar(); });
         }, function (e) {
