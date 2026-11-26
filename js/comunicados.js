@@ -156,7 +156,9 @@
       var para = K.nodo('<p class="cm-para">' + K.icono('enviar', 13) + ' <span></span></p>');
       para.querySelector('span').textContent = 'Para: ' + paraTexto(c) + ((c.destinos && c.destinos.length) ? '' : ' (sin elegir: como siempre)');
       t.appendChild(para);
-      if (c.texto) t.appendChild(K.nodo('<p class="of-com__txt">' + O.conEnlaces(c.texto) + '</p>'));
+      /* 26/11 · el texto se pinta con su formato (negrilla, cursiva, listas…) */
+      if (c.texto) t.appendChild(K.nodo(K.piezas.formato ? '<div class="of-com__txt kfmt-txt">' + K.piezas.formato.html(c.texto) + '</div>'
+        : '<p class="of-com__txt">' + O.conEnlaces(c.texto) + '</p>'));
       var docs = c.documentos || [];
       if (docs.length) {
         var z = K.nodo('<div class="of-com__docs"></div>');
@@ -233,11 +235,9 @@
     cuerpo.appendChild(zDest);
     cuerpo.appendChild(rapidos);
 
-    var ta = K.nodo('<textarea class="rv-editor__ta of-ta" rows="7" maxlength="4000" placeholder="Escribe el comunicado. Los enlaces (https://…) se podrán tocar."></textarea>');
-    cuerpo.appendChild(ta);
-    var cuenta = K.nodo('<p class="of-cuenta">0 / 4000</p>');
-    cuerpo.appendChild(cuenta);
-    ta.addEventListener('input', function () { cuenta.textContent = ta.value.length + ' / 4000'; });
+    /* 26/11 · editor visual: se selecciona el texto y se toca B, I, S…; viaja con marcas tipo WhatsApp */
+    var ed = K.piezas.formato.editor(cuerpo, { max: 4000,
+      placeholder: 'Escribe el comunicado. Para resaltar algo, selecciónalo y toca B, I o el marcador. Los enlaces (https://…) se podrán tocar.' });
     cuerpo.appendChild(K.nodo('<p class="of-rapidos__t">Documentos (opcional) · hasta ' + tope.archivos + ', de ' + tope.mb + ' MB cada uno</p>'));
     var zona = K.nodo('<div class="of-adjuntos"></div>');
     cuerpo.appendChild(zona);
@@ -255,23 +255,24 @@
         { texto: 'Publicar', icono: 'megafono', marca: true, al: publicar }
       ]
     });
-    setTimeout(function () { ta.focus(); }, 120);
+    setTimeout(function () { ed.foco(); }, 120);
 
     function destinos() { return [].slice.call(zDest.querySelectorAll('input:checked')).map(function (i) { return i.value; }); }
 
     function publicar() {
-      var texto = ta.value.replace(/\r/g, '').trim();
+      var texto = ed.valor();
       var archivos = adj ? adj.archivos() : [];
       var para = destinos();
       if (!para.length) { K.aviso('Escoge al menos una app a la que va el comunicado.', 'aviso', 4000); return; }
-      if (!texto && !archivos.length) { K.aviso('Escribe el comunicado o adjunta un documento.', 'aviso', 4000); ta.focus(); return; }
+      if (!texto && !archivos.length) { K.aviso('Escribe el comunicado o adjunta un documento.', 'aviso', 4000); ed.foco(); return; }
+      if (texto.length > ed.max) { K.aviso('El comunicado pasa de ' + K.numero(ed.max) + ' caracteres. Acórtalo un poco.', 'aviso', 5000); ed.foco(); return; }
       var avisar = chk.querySelector('input').checked;
       var tels = para.reduce(function (s, a) { return s + (tp[a] || 0); }, 0);
       K.piezas.confirmar.abrir({
         titulo: 'Publicar el comunicado',
         lista: [
           ['Para', para.map(function (a) { return APPS_T[a]; }).join(', ')],
-          ['Texto', texto ? (texto.length > 80 ? texto.slice(0, 80) + '…' : texto) : '(solo documentos)'],
+          ['Texto', texto ? (function (p) { return p.length > 80 ? p.slice(0, 80) + '…' : p; })(K.piezas.formato.plano(texto)) : '(solo documentos)'],
           ['Documentos', archivos.length ? archivos.map(function (f) { return f.name; }).join(', ') : 'ninguno'],
           ['Aviso', avisar ? 'Notificación a ' + tels + (tels === 1 ? ' teléfono' : ' teléfonos') : 'Sin notificación']
         ],
